@@ -194,6 +194,8 @@ export class LockComponent extends BaseLockComponent {
         return "unlockWithTouchId";
       case DeviceType.WindowsDesktop:
         return "unlockWithWindowsHello";
+      case DeviceType.LinuxDesktop:
+        return "unlockWithPolkit";
       default:
         throw new Error("Unsupported platform");
     }

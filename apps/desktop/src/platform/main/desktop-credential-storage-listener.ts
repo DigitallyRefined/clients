@@ -79,6 +79,12 @@ export class DesktopCredentialStorageListener {
           case BiometricAction.OsSupported:
             val = await this.biometricService.osSupportsBiometric();
             break;
+          case BiometricAction.NeedsSetup:
+            val = await this.biometricService.osBiometricsNeedsSetup();
+            break;
+          case BiometricAction.Setup:
+            await this.biometricService.osBiometricsSetup();
+            break;
           default:
         }
 

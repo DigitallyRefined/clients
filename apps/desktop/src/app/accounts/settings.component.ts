@@ -46,6 +46,7 @@ export class SettingsComponent implements OnInit {
   requireEnableTray = false;
   showDuckDuckGoIntegrationOption = false;
   isWindows: boolean;
+  isLinux: boolean;
 
   enableTrayText: string;
   enableTrayDescText: string;
@@ -203,6 +204,7 @@ export class SettingsComponent implements OnInit {
     this.userHasMasterPassword = await this.userVerificationService.hasMasterPassword();
 
     this.isWindows = (await this.platformUtilsService.getDevice()) === DeviceType.WindowsDesktop;
+    this.isLinux = (await this.platformUtilsService.getDevice()) === DeviceType.LinuxDesktop;
 
     if ((await this.stateService.getUserId()) == null) {
       return;
@@ -460,6 +462,13 @@ export class SettingsComponent implements OnInit {
         await this.biometricStateService.setPromptAutomatically(false);
         await this.biometricStateService.setRequirePasswordOnStart(true);
         await this.biometricStateService.setDismissedRequirePasswordOnStartCallout();
+      } else if (this.isLinux) {
+        // Similar to Windows
+        this.form.controls.requirePasswordOnStart.setValue(true);
+        this.form.controls.autoPromptBiometrics.setValue(false);
+        await this.biometricStateService.setPromptAutomatically(false);
+        await this.biometricStateService.setRequirePasswordOnStart(true);
+        await this.biometricStateService.setDismissedRequirePasswordOnStartCallout();
       }
       await this.cryptoService.refreshAdditionalKeys();
 
@@ -609,7 +618,7 @@ export class SettingsComponent implements OnInit {
 
       this.form.controls.enableBrowserIntegration.setValue(false);
       return;
-    } else if (ipc.platform.deviceType === DeviceType.LinuxDesktop) {
+    } else if (ipc.platform.isSnapStore || ipc.platform.isFlatpak) {
       await this.dialogService.openSimpleDialog({
         title: { key: "browserIntegrationUnsupportedTitle" },
         content: { key: "browserIntegrationLinuxDesc" },
@@ -680,6 +689,8 @@ export class SettingsComponent implements OnInit {
         return "unlockWithTouchId";
       case DeviceType.WindowsDesktop:
         return "unlockWithWindowsHello";
+      case DeviceType.LinuxDesktop:
+        return "unlockWithPolkit";
       default:
         throw new Error("Unsupported platform");
     }
@@ -691,6 +702,8 @@ export class SettingsComponent implements OnInit {
         return "autoPromptTouchId";
       case DeviceType.WindowsDesktop:
         return "autoPromptWindowsHello";
+      case DeviceType.LinuxDesktop:
+        return "autoPromptPolkit";
       default:
         throw new Error("Unsupported platform");
     }
@@ -702,6 +715,8 @@ export class SettingsComponent implements OnInit {
         return "additionalTouchIdSettings";
       case DeviceType.WindowsDesktop:
         return "additionalWindowsHelloSettings";
+      case DeviceType.LinuxDesktop:
+        return "additionalPolkitSettings";
       default:
         throw new Error("Unsupported platform");
     }
