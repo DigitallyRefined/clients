@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 cd /bitwarden-build
 npm install
 cd apps/desktop/desktop_native
