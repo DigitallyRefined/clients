@@ -1,31 +1,12 @@
 # Containerized build
 
-## Debian
+To build Bitwarden desktop via a container run:
 
 `./build.sh`
 
-## Fedora
+## Linux Browser extension biometric unlock
 
-[Required build tools](https://contributing.bitwarden.com/getting-started/clients/desktop/)
+Either:
 
-```bash
-sudo dnf groupinstall "Development Tools" "Development Libraries"
-
-sudo dnf install libsecret-devel libglibutil-devel rustup argon2 libargon2-devel gcc-c++ libxcrypt-compat
-
-rustup-init
-
-rustup target add x86_64-unknown-linux-musl
-```
-
-`./containerized-build.sh`
-
-## Browser extension
-
-[Edit Bitwarden Chrome extension](https://github.com/quexten/clients/pull/3) to allow Linux biometric unlock and add the extension ID to:
-
-`~/.config/google-chrome/NativeMessagingHosts/com.8bit.bitwarden.json`
-
-```json
-"chrome-extension://palnbbhihpkngcohjfbmmkmjmgmkmiei/"
-```
+- [Manually update Bitwarden browser extension settings to allow biometric unlock](https://github.com/quexten/goldwarden/wiki/Browser-Biometric-Approval#browser-extension-20240401-and-newer)
+- Or alternatively [Edit the Bitwarden extension](https://github.com/quexten/clients/pull/3/files) then sideload it into Chromium and update the extension ID in: `~/.config/google-chrome/NativeMessagingHosts/com.8bit.bitwarden.json`

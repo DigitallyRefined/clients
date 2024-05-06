@@ -1,12 +1,19 @@
-FROM rust:1.77-bookworm
+FROM fedora:40
 
-RUN apt update && apt upgrade -y && \
-    apt install -y \
-    build-essential \
-    libsecret-1-dev \
-    libglib2.0-dev \
-    nodejs \
-    npm \
-    rpm
+RUN dnf groupinstall -y "Development Tools" "Development Libraries"
 
-RUN rustup target add x86_64-unknown-linux-musl
+RUN dnf install -y \
+    libsecret-devel \
+    libglibutil-devel \
+    rustup \
+    argon2 \
+    libargon2-devel \
+    gcc-c++ \
+    libxcrypt-compat \
+    rpm-build \
+    nodejs
+
+RUN rustup-init -y
+
+RUN source "$HOME/.cargo/env" && \
+    rustup target add x86_64-unknown-linux-musl
