@@ -28,6 +28,8 @@ export class BiometricsService implements BiometricsServiceAbstraction {
       this.loadWindowsHelloService();
     } else if (platform === "darwin") {
       this.loadMacOSService();
+    } else if (platform === "linux") {
+      this.loadUnixService();
     } else {
       this.loadNoopBiometricsService();
     }
@@ -49,6 +51,16 @@ export class BiometricsService implements BiometricsServiceAbstraction {
     this.platformSpecificService = new BiometricDarwinMain(this.i18nService);
   }
 
+  private loadUnixService() {
+    // eslint-disable-next-line
+    const BiometricUnixMain = require("./biometric.unix.main").default;
+    this.platformSpecificService = new BiometricUnixMain(
+      this.i18nService,
+      this.windowMain,
+      this.logService,
+    );
+  }
+
   private loadNoopBiometricsService() {
     // eslint-disable-next-line
     const NoopBiometricsService = require("./biometric.noop.main").default;
@@ -57,6 +69,14 @@ export class BiometricsService implements BiometricsServiceAbstraction {
 
   async osSupportsBiometric() {
     return await this.platformSpecificService.osSupportsBiometric();
+  }
+
+  async osBiometricsNeedsSetup() {
+    return await this.platformSpecificService.osBiometricsNeedsSetup();
+  }
+
+  async osBiometricsSetup() {
+    await this.platformSpecificService.osBiometricsSetup();
   }
 
   async canAuthBiometric({
