@@ -99,20 +99,16 @@ export class MemberDialogComponent implements OnDestroy {
     emails: [""],
     type: OrganizationUserType.User,
     externalId: this.formBuilder.control({ value: "", disabled: true }),
-    accessAllCollections: false,
     accessSecretsManager: false,
     access: [[] as AccessItemValue[]],
     groups: [[] as AccessItemValue[]],
   });
 
-  protected restrictedAccess$: Observable<boolean>;
+  protected allowAdminAccessToAllCollectionItems$: Observable<boolean>;
+  protected restrictEditingSelf$: Observable<boolean>;
+  protected canAssignAccessToAnyCollection$: Observable<boolean>;
 
   protected permissionsGroup = this.formBuilder.group({
-    manageAssignedCollectionsGroup: this.formBuilder.group<Record<string, boolean>>({
-      manageAssignedCollections: false,
-      editAssignedCollections: false,
-      deleteAssignedCollections: false,
-    }),
     manageAllCollectionsGroup: this.formBuilder.group<Record<string, boolean>>({
       manageAllCollections: false,
       createNewCollections: false,
@@ -133,10 +129,6 @@ export class MemberDialogComponent implements OnDestroy {
 
   get customUserTypeSelected(): boolean {
     return this.formGroup.value.type === OrganizationUserType.Custom;
-  }
-
-  get accessAllCollections(): boolean {
-    return this.formGroup.value.accessAllCollections;
   }
 
   constructor(
@@ -182,44 +174,64 @@ export class MemberDialogComponent implements OnDestroy {
       ? this.userService.get(this.params.organizationId, this.params.organizationUserId)
       : of(null);
 
-    // The orgUser cannot manage their own Group assignments if collection access is restricted
-    // TODO: fix disabled state of access-selector rows so that any controls are hidden
-    this.restrictedAccess$ = combineLatest([
+    this.allowAdminAccessToAllCollectionItems$ = combineLatest([
       this.organization$,
-      userDetails$,
-      this.accountService.activeAccount$,
       this.configService.getFeatureFlag$(FeatureFlag.FlexibleCollectionsV1),
     ]).pipe(
+      map(([organization, flexibleCollectionsV1Enabled]) => {
+        if (!flexibleCollectionsV1Enabled) {
+          return true;
+        }
+
+        return organization.allowAdminAccessToAllCollectionItems;
+      }),
+    );
+
+    // The orgUser cannot manage their own Group assignments if collection access is restricted
+    this.restrictEditingSelf$ = combineLatest([
+      this.allowAdminAccessToAllCollectionItems$,
+      userDetails$,
+      this.accountService.activeAccount$,
+    ]).pipe(
       map(
-        ([organization, userDetails, activeAccount, flexibleCollectionsV1Enabled]) =>
-          // Feature flag conditionals
-          flexibleCollectionsV1Enabled &&
-          organization.flexibleCollections &&
-          // Business logic conditionals
-          userDetails != null &&
-          userDetails.userId == activeAccount.id &&
-          !organization.allowAdminAccessToAllCollectionItems,
+        ([allowAdminAccess, userDetails, activeAccount]) =>
+          !allowAdminAccess && userDetails != null && userDetails.userId == activeAccount.id,
       ),
       shareReplay({ refCount: true, bufferSize: 1 }),
     );
 
-    this.restrictedAccess$.pipe(takeUntil(this.destroy$)).subscribe((restrictedAccess) => {
-      if (restrictedAccess) {
+    this.restrictEditingSelf$.pipe(takeUntil(this.destroy$)).subscribe((restrictEditingSelf) => {
+      if (restrictEditingSelf) {
         this.formGroup.controls.groups.disable();
       } else {
         this.formGroup.controls.groups.enable();
       }
     });
 
+    const flexibleCollectionsV1Enabled$ = this.configService.getFeatureFlag$(
+      FeatureFlag.FlexibleCollectionsV1,
+    );
+
+    this.canAssignAccessToAnyCollection$ = combineLatest([
+      this.organization$,
+      flexibleCollectionsV1Enabled$,
+      this.allowAdminAccessToAllCollectionItems$,
+    ]).pipe(
+      map(
+        ([org, flexibleCollectionsV1Enabled, allowAdminAccessToAllCollectionItems]) =>
+          org.canEditAnyCollection(flexibleCollectionsV1Enabled) ||
+          // Manage Users custom permission cannot edit any collection but they can assign access from this dialog
+          // if permitted by collection management settings
+          (org.permissions.manageUsers && allowAdminAccessToAllCollectionItems),
+      ),
+    );
+
     combineLatest({
       organization: this.organization$,
       collections: this.collectionAdminService.getAll(this.params.organizationId),
       userDetails: userDetails$,
       groups: groups$,
-      flexibleCollectionsV1Enabled: this.configService.getFeatureFlag$(
-        FeatureFlag.FlexibleCollectionsV1,
-        false,
-      ),
+      flexibleCollectionsV1Enabled: flexibleCollectionsV1Enabled$,
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe(
@@ -294,13 +306,6 @@ export class MemberDialogComponent implements OnDestroy {
     this.showNoMasterPasswordWarning =
       userDetails.status > OrganizationUserStatusType.Invited &&
       userDetails.hasMasterPassword === false;
-    const assignedCollectionsPermissions = {
-      editAssignedCollections: userDetails.permissions.editAssignedCollections,
-      deleteAssignedCollections: userDetails.permissions.deleteAssignedCollections,
-      manageAssignedCollections:
-        userDetails.permissions.editAssignedCollections &&
-        userDetails.permissions.deleteAssignedCollections,
-    };
     const allCollectionsPermissions = {
       createNewCollections: userDetails.permissions.createNewCollections,
       editAnyCollection: userDetails.permissions.editAnyCollection,
@@ -320,7 +325,6 @@ export class MemberDialogComponent implements OnDestroy {
         managePolicies: userDetails.permissions.managePolicies,
         manageUsers: userDetails.permissions.manageUsers,
         manageResetPassword: userDetails.permissions.manageResetPassword,
-        manageAssignedCollectionsGroup: assignedCollectionsPermissions,
         manageAllCollectionsGroup: allCollectionsPermissions,
       });
     }
@@ -356,7 +360,6 @@ export class MemberDialogComponent implements OnDestroy {
     this.formGroup.patchValue({
       type: userDetails.type,
       externalId: userDetails.externalId,
-      accessAllCollections: userDetails.accessAll,
       access: accessSelections,
       accessSecretsManager: userDetails.accessSecretsManager,
       groups: groupAccessSelections,
@@ -392,10 +395,6 @@ export class MemberDialogComponent implements OnDestroy {
       editAnyCollection: this.permissionsGroup.value.manageAllCollectionsGroup.editAnyCollection,
       deleteAnyCollection:
         this.permissionsGroup.value.manageAllCollectionsGroup.deleteAnyCollection,
-      editAssignedCollections:
-        this.permissionsGroup.value.manageAssignedCollectionsGroup.editAssignedCollections,
-      deleteAssignedCollections:
-        this.permissionsGroup.value.manageAssignedCollectionsGroup.deleteAssignedCollections,
     };
 
     return Object.assign(p, partialPermissions);
@@ -445,7 +444,6 @@ export class MemberDialogComponent implements OnDestroy {
     const userView = new OrganizationUserAdminView();
     userView.id = this.params.organizationUserId;
     userView.organizationId = this.params.organizationId;
-    userView.accessAll = this.accessAllCollections;
     userView.type = this.formGroup.value.type;
     userView.permissions = this.setRequestPermissions(
       userView.permissions ?? new PermissionsApi(),
@@ -455,7 +453,7 @@ export class MemberDialogComponent implements OnDestroy {
       .filter((v) => v.type === AccessItemType.Collection)
       .map(convertToSelectionView);
 
-    userView.groups = (await firstValueFrom(this.restrictedAccess$))
+    userView.groups = (await firstValueFrom(this.restrictEditingSelf$))
       ? null
       : this.formGroup.value.groups.map((m) => m.id);
 
@@ -620,7 +618,7 @@ export class MemberDialogComponent implements OnDestroy {
 }
 
 function mapCollectionToAccessItemView(
-  collection: CollectionView,
+  collection: CollectionAdminView,
   organization: Organization,
   flexibleCollectionsV1Enabled: boolean,
   accessSelection?: CollectionAccessSelectionView,
@@ -632,7 +630,8 @@ function mapCollectionToAccessItemView(
     labelName: collection.name,
     listName: collection.name,
     readonly:
-      group !== undefined || !collection.canEdit(organization, flexibleCollectionsV1Enabled),
+      group !== undefined ||
+      !collection.canEditUserAccess(organization, flexibleCollectionsV1Enabled),
     readonlyPermission: accessSelection ? convertToPermission(accessSelection) : undefined,
     viaGroupName: group?.name,
   };

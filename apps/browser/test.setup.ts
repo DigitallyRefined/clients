@@ -1,3 +1,5 @@
+import "jest-preset-angular/setup-jest";
+
 // Add chrome storage api
 const QUOTA_BYTES = 10;
 const storage = {
@@ -133,6 +135,8 @@ const permissions = {
 };
 
 const webNavigation = {
+  getFrame: jest.fn(),
+  getAllFrames: jest.fn(),
   onCommitted: {
     addListener: jest.fn(),
     removeListener: jest.fn(),

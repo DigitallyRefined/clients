@@ -51,8 +51,8 @@ export class SetPasswordComponent extends BaseChangePasswordComponent {
   ForceSetPasswordReason = ForceSetPasswordReason;
 
   constructor(
-    private accountService: AccountService,
-    private masterPasswordService: InternalMasterPasswordServiceAbstraction,
+    accountService: AccountService,
+    masterPasswordService: InternalMasterPasswordServiceAbstraction,
     i18nService: I18nService,
     cryptoService: CryptoService,
     messagingService: MessagingService,
@@ -82,6 +82,8 @@ export class SetPasswordComponent extends BaseChangePasswordComponent {
       stateService,
       dialogService,
       kdfConfigService,
+      masterPasswordService,
+      accountService,
     );
   }
 
@@ -244,7 +246,7 @@ export class SetPasswordComponent extends BaseChangePasswordComponent {
     await this.userDecryptionOptionsService.setUserDecryptionOptions(userDecryptionOpts);
     await this.kdfConfigService.setKdfConfig(this.userId, this.kdfConfig);
     await this.masterPasswordService.setMasterKey(masterKey, this.userId);
-    await this.cryptoService.setUserKey(userKey[0]);
+    await this.cryptoService.setUserKey(userKey[0], this.userId);
 
     // Set private key only for new JIT provisioned users in MP encryption orgs
     // Existing TDE users will have private key set on sync or on login
@@ -253,7 +255,7 @@ export class SetPasswordComponent extends BaseChangePasswordComponent {
       this.forceSetPasswordReason !=
         ForceSetPasswordReason.TdeUserWithoutPasswordHasPasswordResetPermission
     ) {
-      await this.cryptoService.setPrivateKey(keyPair[1].encryptedString);
+      await this.cryptoService.setPrivateKey(keyPair[1].encryptedString, this.userId);
     }
 
     const localMasterKeyHash = await this.cryptoService.hashMasterKey(

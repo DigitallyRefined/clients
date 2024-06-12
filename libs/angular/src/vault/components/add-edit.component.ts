@@ -1,6 +1,6 @@
 import { DatePipe } from "@angular/common";
 import { Directive, EventEmitter, Input, OnDestroy, OnInit, Output } from "@angular/core";
-import { concatMap, firstValueFrom, Observable, Subject, takeUntil } from "rxjs";
+import { concatMap, firstValueFrom, map, Observable, Subject, takeUntil } from "rxjs";
 
 import { AuditService } from "@bitwarden/common/abstractions/audit.service";
 import { EventCollectionService } from "@bitwarden/common/abstractions/event/event-collection.service";
@@ -11,6 +11,7 @@ import {
 import { PolicyService } from "@bitwarden/common/admin-console/abstractions/policy/policy.service.abstraction";
 import { OrganizationUserStatusType, PolicyType } from "@bitwarden/common/admin-console/enums";
 import { Organization } from "@bitwarden/common/admin-console/models/domain/organization";
+import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
 import { EventType } from "@bitwarden/common/enums";
 import { FeatureFlag } from "@bitwarden/common/enums/feature-flag.enum";
 import { UriMatchStrategy } from "@bitwarden/common/models/domain/domain-service";
@@ -19,7 +20,6 @@ import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.servic
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
 import { MessagingService } from "@bitwarden/common/platform/abstractions/messaging.service";
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
-import { StateService } from "@bitwarden/common/platform/abstractions/state.service";
 import { Utils } from "@bitwarden/common/platform/misc/utils";
 import { SendApiService } from "@bitwarden/common/tools/send/services/send-api.service.abstraction";
 import { CipherService } from "@bitwarden/common/vault/abstractions/cipher.service";
@@ -91,6 +91,7 @@ export class AddEditComponent implements OnInit, OnDestroy {
   private previousCipherId: string;
 
   protected flexibleCollectionsV1Enabled = false;
+  protected restrictProviderAccess = false;
 
   get fido2CredentialCreationDateValue(): string {
     const dateCreated = this.i18nService.t("dateCreated");
@@ -107,7 +108,7 @@ export class AddEditComponent implements OnInit, OnDestroy {
     protected i18nService: I18nService,
     protected platformUtilsService: PlatformUtilsService,
     protected auditService: AuditService,
-    protected stateService: StateService,
+    protected accountService: AccountService,
     protected collectionService: CollectionService,
     protected messagingService: MessagingService,
     protected eventCollectionService: EventCollectionService,
@@ -182,7 +183,9 @@ export class AddEditComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.flexibleCollectionsV1Enabled = await this.configService.getFeatureFlag(
       FeatureFlag.FlexibleCollectionsV1,
-      false,
+    );
+    this.restrictProviderAccess = await this.configService.getFeatureFlag(
+      FeatureFlag.RestrictProviderAccess,
     );
 
     this.policyService
@@ -212,7 +215,9 @@ export class AddEditComponent implements OnInit, OnDestroy {
     if (this.personalOwnershipPolicyAppliesToActiveUser) {
       this.allowPersonal = false;
     } else {
-      const myEmail = await this.stateService.getEmail();
+      const myEmail = await firstValueFrom(
+        this.accountService.activeAccount$.pipe(map((a) => a?.email)),
+      );
       this.ownershipOptions.push({ name: myEmail, value: null });
     }
 
@@ -288,6 +293,16 @@ export class AddEditComponent implements OnInit, OnDestroy {
             (c as any).checked = true;
           }
         });
+      }
+    }
+    // Only Admins can clone a cipher to different owner
+    if (this.cloneMode && this.cipher.organizationId != null) {
+      const cipherOrg = (await firstValueFrom(this.organizationService.memberOrganizations$)).find(
+        (o) => o.id === this.cipher.organizationId,
+      );
+
+      if (cipherOrg != null && !cipherOrg.isAdmin && !cipherOrg.permissions.editAnyCollection) {
+        this.ownershipOptions = [{ name: cipherOrg.name, value: cipherOrg.id }];
       }
     }
 
@@ -659,11 +674,14 @@ export class AddEditComponent implements OnInit, OnDestroy {
 
   protected saveCipher(cipher: Cipher) {
     const isNotClone = this.editMode && !this.cloneMode;
-    let orgAdmin = this.organization?.canEditAllCiphers(this.flexibleCollectionsV1Enabled);
+    let orgAdmin = this.organization?.canEditAllCiphers(
+      this.flexibleCollectionsV1Enabled,
+      this.restrictProviderAccess,
+    );
 
     // if a cipher is unassigned we want to check if they are an admin or have permission to edit any collection
     if (!cipher.collectionIds) {
-      orgAdmin = this.organization?.canEditUnassignedCiphers();
+      orgAdmin = this.organization?.canEditUnassignedCiphers(this.restrictProviderAccess);
     }
 
     return this.cipher.id == null
@@ -672,14 +690,20 @@ export class AddEditComponent implements OnInit, OnDestroy {
   }
 
   protected deleteCipher() {
-    const asAdmin = this.organization?.canEditAllCiphers(this.flexibleCollectionsV1Enabled);
+    const asAdmin = this.organization?.canEditAllCiphers(
+      this.flexibleCollectionsV1Enabled,
+      this.restrictProviderAccess,
+    );
     return this.cipher.isDeleted
       ? this.cipherService.deleteWithServer(this.cipher.id, asAdmin)
       : this.cipherService.softDeleteWithServer(this.cipher.id, asAdmin);
   }
 
   protected restoreCipher() {
-    const asAdmin = this.organization?.canEditAllCiphers(this.flexibleCollectionsV1Enabled);
+    const asAdmin = this.organization?.canEditAllCiphers(
+      this.flexibleCollectionsV1Enabled,
+      this.restrictProviderAccess,
+    );
     return this.cipherService.restoreWithServer(this.cipher.id, asAdmin);
   }
 

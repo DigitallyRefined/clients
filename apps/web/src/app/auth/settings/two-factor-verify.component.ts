@@ -1,4 +1,6 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { DIALOG_DATA, DialogConfig, DialogRef } from "@angular/cdk/dialog";
+import { Component, EventEmitter, Inject, Output } from "@angular/core";
+import { FormControl, FormGroup } from "@angular/forms";
 
 import { ApiService } from "@bitwarden/common/abstractions/api.service";
 import { UserVerificationService } from "@bitwarden/common/auth/abstractions/user-verification/user-verification.service.abstraction";
@@ -8,46 +10,83 @@ import { SecretVerificationRequest } from "@bitwarden/common/auth/models/request
 import { AuthResponse } from "@bitwarden/common/auth/types/auth-response";
 import { TwoFactorResponse } from "@bitwarden/common/auth/types/two-factor-response";
 import { Verification } from "@bitwarden/common/auth/types/verification";
-import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
+import { ErrorResponse } from "@bitwarden/common/models/response/error.response";
+import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
+import { DialogService } from "@bitwarden/components";
+
+type TwoFactorVerifyDialogData = {
+  type: TwoFactorProviderType;
+  organizationId: string;
+};
 
 @Component({
   selector: "app-two-factor-verify",
   templateUrl: "two-factor-verify.component.html",
 })
 export class TwoFactorVerifyComponent {
-  @Input() type: TwoFactorProviderType;
-  @Input() organizationId: string;
+  type: TwoFactorProviderType;
+  organizationId: string;
   @Output() onAuthed = new EventEmitter<AuthResponse<TwoFactorResponse>>();
 
-  secret: Verification;
   formPromise: Promise<TwoFactorResponse>;
 
+  protected formGroup = new FormGroup({
+    secret: new FormControl<Verification | null>(null),
+  });
+  invalidSecret: boolean = false;
+
   constructor(
+    @Inject(DIALOG_DATA) protected data: TwoFactorVerifyDialogData,
+    private dialogRef: DialogRef,
     private apiService: ApiService,
-    private logService: LogService,
+    private i18nService: I18nService,
     private userVerificationService: UserVerificationService,
-  ) {}
+  ) {
+    this.type = data.type;
+    this.organizationId = data.organizationId;
+  }
 
-  async submit() {
-    let hashedSecret: string;
-
+  submit = async () => {
     try {
-      this.formPromise = this.userVerificationService.buildRequest(this.secret).then((request) => {
-        hashedSecret =
-          this.secret.type === VerificationType.MasterPassword
-            ? request.masterPasswordHash
-            : request.otp;
-        return this.apiCall(request);
-      });
+      let hashedSecret: string;
+      this.formPromise = this.userVerificationService
+        .buildRequest(this.formGroup.value.secret)
+        .then((request) => {
+          hashedSecret =
+            this.formGroup.value.secret.type === VerificationType.MasterPassword
+              ? request.masterPasswordHash
+              : request.otp;
+          return this.apiCall(request);
+        });
 
       const response = await this.formPromise;
-      this.onAuthed.emit({
+      this.dialogRef.close({
         response: response,
         secret: hashedSecret,
-        verificationType: this.secret.type,
+        verificationType: this.formGroup.value.secret.type,
       });
     } catch (e) {
-      this.logService.error(e);
+      if (e instanceof ErrorResponse && e.statusCode === 400) {
+        this.invalidSecret = true;
+      }
+      throw e;
+    }
+  };
+
+  get dialogTitle(): string {
+    switch (this.type) {
+      case -1 as TwoFactorProviderType:
+        return this.i18nService.t("recoveryCodeTitle");
+      case TwoFactorProviderType.Duo:
+        return "Duo";
+      case TwoFactorProviderType.Email:
+        return this.i18nService.t("emailTitle");
+      case TwoFactorProviderType.WebAuthn:
+        return this.i18nService.t("webAuthnTitle");
+      case TwoFactorProviderType.Authenticator:
+        return this.i18nService.t("authenticatorAppTitle");
+      case TwoFactorProviderType.Yubikey:
+        return "Yubikey";
     }
   }
 
@@ -71,5 +110,9 @@ export class TwoFactorVerifyComponent {
       case TwoFactorProviderType.Yubikey:
         return this.apiService.getTwoFactorYubiKey(request);
     }
+  }
+
+  static open(dialogService: DialogService, config: DialogConfig<TwoFactorVerifyDialogData>) {
+    return dialogService.open<AuthResponse<any>>(TwoFactorVerifyComponent, config);
   }
 }

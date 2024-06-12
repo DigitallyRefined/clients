@@ -14,6 +14,7 @@ import { CryptoService } from "../../platform/abstractions/crypto.service";
 import { EncryptService } from "../../platform/abstractions/encrypt.service";
 import { I18nService } from "../../platform/abstractions/i18n.service";
 import { KeyGenerationService } from "../../platform/abstractions/key-generation.service";
+import { LogService } from "../../platform/abstractions/log.service";
 import { PlatformUtilsService } from "../../platform/abstractions/platform-utils.service";
 import { AbstractStorageService } from "../../platform/abstractions/storage.service";
 import { StorageLocation } from "../../platform/enums";
@@ -48,6 +49,7 @@ describe("deviceTrustService", () => {
   const i18nService = mock<I18nService>();
   const platformUtilsService = mock<PlatformUtilsService>();
   const secureStorageService = mock<AbstractStorageService>();
+  const logService = mock<LogService>();
 
   const userDecryptionOptionsService = mock<UserDecryptionOptionsServiceAbstraction>();
   const decryptionOptions = new BehaviorSubject<UserDecryptionOptions>(null);
@@ -593,7 +595,7 @@ describe("deviceTrustService", () => {
         const fakeNewUserKeyData = new Uint8Array(64);
         fakeNewUserKeyData.fill(FakeNewUserKeyMarker, 0, 1);
         fakeNewUserKey = new SymmetricCryptoKey(fakeNewUserKeyData) as UserKey;
-        cryptoService.activeUserKey$ = of(fakeNewUserKey);
+        cryptoService.userKey$.mockReturnValue(of(fakeNewUserKey));
       });
 
       it("throws an error when a null user id is passed in", async () => {
@@ -629,7 +631,9 @@ describe("deviceTrustService", () => {
           fakeOldUserKeyData.fill(FakeOldUserKeyMarker, 0, 1);
 
           // Mock the retrieval of a user key that differs from the new one passed into the method
-          cryptoService.activeUserKey$ = of(new SymmetricCryptoKey(fakeOldUserKeyData) as UserKey);
+          cryptoService.userKey$.mockReturnValue(
+            of(new SymmetricCryptoKey(fakeOldUserKeyData) as UserKey),
+          );
 
           appIdService.getAppId.mockResolvedValue("test_device_identifier");
 
@@ -726,6 +730,7 @@ describe("deviceTrustService", () => {
       stateProvider,
       secureStorageService,
       userDecryptionOptionsService,
+      logService,
     );
   }
 });

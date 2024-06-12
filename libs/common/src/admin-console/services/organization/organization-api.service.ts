@@ -1,3 +1,5 @@
+import { BillingHistoryResponse } from "@bitwarden/common/billing/models/response/billing-history.response";
+
 import { ApiService } from "../../../abstractions/api.service";
 import { OrganizationApiKeyRequest } from "../../../admin-console/models/request/organization-api-key.request";
 import { OrganizationSsoRequest } from "../../../auth/models/request/organization-sso.request";
@@ -26,6 +28,7 @@ import { OrganizationCreateRequest } from "../../models/request/organization-cre
 import { OrganizationKeysRequest } from "../../models/request/organization-keys.request";
 import { OrganizationUpdateRequest } from "../../models/request/organization-update.request";
 import { OrganizationUpgradeRequest } from "../../models/request/organization-upgrade.request";
+import { OrganizationVerifyDeleteRecoverRequest } from "../../models/request/organization-verify-delete-recover.request";
 import { OrganizationApiKeyInformationResponse } from "../../models/response/organization-api-key-information.response";
 import { OrganizationAutoEnrollStatusResponse } from "../../models/response/organization-auto-enroll-status.response";
 import { OrganizationKeysResponse } from "../../models/response/organization-keys.response";
@@ -52,6 +55,17 @@ export class OrganizationApiService implements OrganizationApiServiceAbstraction
       true,
     );
     return new BillingResponse(r);
+  }
+
+  async getBillingHistory(id: string): Promise<BillingHistoryResponse> {
+    const r = await this.apiService.send(
+      "GET",
+      "/organizations/" + id + "/billing/history",
+      null,
+      true,
+      true,
+    );
+    return new BillingHistoryResponse(r);
   }
 
   async getSubscription(id: string): Promise<OrganizationSubscriptionResponse> {
@@ -198,6 +212,19 @@ export class OrganizationApiService implements OrganizationApiServiceAbstraction
     await this.syncService.fullSync(true);
   }
 
+  deleteUsingToken(
+    organizationId: string,
+    request: OrganizationVerifyDeleteRecoverRequest,
+  ): Promise<any> {
+    return this.apiService.send(
+      "POST",
+      "/organizations/" + organizationId + "/delete-recover-token",
+      request,
+      false,
+      false,
+    );
+  }
+
   async updateLicense(id: string, data: FormData): Promise<void> {
     await this.apiService.send(
       "POST",
@@ -337,16 +364,5 @@ export class OrganizationApiService implements OrganizationApiServiceAbstraction
     const data = new OrganizationResponse(r);
     await this.syncService.fullSync(true);
     return data;
-  }
-
-  async enableCollectionEnhancements(id: string): Promise<void> {
-    await this.apiService.send(
-      "POST",
-      "/organizations/" + id + "/enable-collection-enhancements",
-      null,
-      true,
-      false,
-    );
-    await this.syncService.fullSync(true);
   }
 }

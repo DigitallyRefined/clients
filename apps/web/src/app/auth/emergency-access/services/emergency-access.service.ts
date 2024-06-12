@@ -209,7 +209,16 @@ export class EmergencyAccessService {
   async getViewOnlyCiphers(id: string): Promise<CipherView[]> {
     const response = await this.emergencyAccessApiService.postEmergencyAccessView(id);
 
-    const grantorKeyBuffer = await this.cryptoService.rsaDecrypt(response.keyEncrypted);
+    const activeUserPrivateKey = await this.cryptoService.getPrivateKey();
+
+    if (activeUserPrivateKey == null) {
+      throw new Error("Active user does not have a private key, cannot get view only ciphers.");
+    }
+
+    const grantorKeyBuffer = await this.cryptoService.rsaDecrypt(
+      response.keyEncrypted,
+      activeUserPrivateKey,
+    );
     const grantorUserKey = new SymmetricCryptoKey(grantorKeyBuffer) as UserKey;
 
     const ciphers = await this.encryptService.decryptItems(
@@ -229,7 +238,16 @@ export class EmergencyAccessService {
   async takeover(id: string, masterPassword: string, email: string) {
     const takeoverResponse = await this.emergencyAccessApiService.postEmergencyAccessTakeover(id);
 
-    const grantorKeyBuffer = await this.cryptoService.rsaDecrypt(takeoverResponse.keyEncrypted);
+    const activeUserPrivateKey = await this.cryptoService.getPrivateKey();
+
+    if (activeUserPrivateKey == null) {
+      throw new Error("Active user does not have a private key, cannot complete a takeover.");
+    }
+
+    const grantorKeyBuffer = await this.cryptoService.rsaDecrypt(
+      takeoverResponse.keyEncrypted,
+      activeUserPrivateKey,
+    );
     if (grantorKeyBuffer == null) {
       throw new Error("Failed to decrypt grantor key");
     }
@@ -309,17 +327,5 @@ export class EmergencyAccessService {
 
   private async encryptKey(userKey: UserKey, publicKey: Uint8Array): Promise<EncryptedString> {
     return (await this.cryptoService.rsaEncrypt(userKey.key, publicKey)).encryptedString;
-  }
-
-  /**
-   * @deprecated Nov 6, 2023: Use new Key Rotation Service for posting rotated data.
-   */
-  async postLegacyRotation(requests: EmergencyAccessWithIdRequest[]): Promise<void> {
-    if (requests == null) {
-      return;
-    }
-    for (const request of requests) {
-      await this.emergencyAccessApiService.putEmergencyAccess(request.id, request);
-    }
   }
 }

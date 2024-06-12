@@ -113,7 +113,8 @@ export default {
   isFlatpak: isFlatpak(),
   isSnapStore: isSnapStore(),
   reloadProcess: () => ipcRenderer.send("reload-process"),
-  log: (level: LogLevelType, message: string) => ipcRenderer.invoke("ipc.log", { level, message }),
+  log: (level: LogLevelType, message?: any, ...optionalParams: any[]) =>
+    ipcRenderer.invoke("ipc.log", { level, message, optionalParams }),
 
   openContextMenu: (
     menu: {

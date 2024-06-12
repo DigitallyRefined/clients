@@ -1,34 +1,19 @@
 import { firstValueFrom, Observable, map, BehaviorSubject } from "rxjs";
 import { Jsonify } from "type-fest";
 
-import { ApiService } from "@bitwarden/common/abstractions/api.service";
-import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
-import { KdfConfigService } from "@bitwarden/common/auth/abstractions/kdf-config.service";
+import { DeviceTrustServiceAbstraction } from "@bitwarden/common/auth/abstractions/device-trust.service.abstraction";
 import { KeyConnectorService } from "@bitwarden/common/auth/abstractions/key-connector.service";
-import { InternalMasterPasswordServiceAbstraction } from "@bitwarden/common/auth/abstractions/master-password.service.abstraction";
-import { TokenService } from "@bitwarden/common/auth/abstractions/token.service";
-import { TwoFactorService } from "@bitwarden/common/auth/abstractions/two-factor.service";
+import { AuthResult } from "@bitwarden/common/auth/models/domain/auth-result";
 import { ForceSetPasswordReason } from "@bitwarden/common/auth/models/domain/force-set-password-reason";
 import { SsoTokenRequest } from "@bitwarden/common/auth/models/request/identity-token/sso-token.request";
 import { AuthRequestResponse } from "@bitwarden/common/auth/models/response/auth-request.response";
 import { IdentityTokenResponse } from "@bitwarden/common/auth/models/response/identity-token.response";
-import { BillingAccountProfileStateService } from "@bitwarden/common/billing/abstractions/account/billing-account-profile-state.service";
 import { HttpStatusCode } from "@bitwarden/common/enums";
 import { ErrorResponse } from "@bitwarden/common/models/response/error.response";
-import { AppIdService } from "@bitwarden/common/platform/abstractions/app-id.service";
-import { CryptoService } from "@bitwarden/common/platform/abstractions/crypto.service";
 import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
-import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
-import { MessagingService } from "@bitwarden/common/platform/abstractions/messaging.service";
-import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
-import { StateService } from "@bitwarden/common/platform/abstractions/state.service";
-import { DeviceTrustServiceAbstraction } from "@bitwarden/common/src/auth/abstractions/device-trust.service.abstraction";
 import { UserId } from "@bitwarden/common/types/guid";
 
-import {
-  InternalUserDecryptionOptionsServiceAbstraction,
-  AuthRequestServiceAbstraction,
-} from "../abstractions";
+import { AuthRequestServiceAbstraction } from "../abstractions";
 import { SsoLoginCredentials } from "../models/domain/login-credentials";
 import { CacheData } from "../services/login-strategies/login-strategy.state";
 
@@ -82,41 +67,13 @@ export class SsoLoginStrategy extends LoginStrategy {
 
   constructor(
     data: SsoLoginStrategyData,
-    accountService: AccountService,
-    masterPasswordService: InternalMasterPasswordServiceAbstraction,
-    cryptoService: CryptoService,
-    apiService: ApiService,
-    tokenService: TokenService,
-    appIdService: AppIdService,
-    platformUtilsService: PlatformUtilsService,
-    messagingService: MessagingService,
-    logService: LogService,
-    stateService: StateService,
-    twoFactorService: TwoFactorService,
-    userDecryptionOptionsService: InternalUserDecryptionOptionsServiceAbstraction,
     private keyConnectorService: KeyConnectorService,
     private deviceTrustService: DeviceTrustServiceAbstraction,
     private authRequestService: AuthRequestServiceAbstraction,
     private i18nService: I18nService,
-    billingAccountProfileStateService: BillingAccountProfileStateService,
-    kdfConfigService: KdfConfigService,
+    ...sharedDeps: ConstructorParameters<typeof LoginStrategy>
   ) {
-    super(
-      accountService,
-      masterPasswordService,
-      cryptoService,
-      apiService,
-      tokenService,
-      appIdService,
-      platformUtilsService,
-      messagingService,
-      logService,
-      stateService,
-      twoFactorService,
-      userDecryptionOptionsService,
-      billingAccountProfileStateService,
-      kdfConfigService,
-    );
+    super(...sharedDeps);
 
     this.cache = new BehaviorSubject(data);
     this.email$ = this.cache.pipe(map((state) => state.email));
@@ -124,7 +81,7 @@ export class SsoLoginStrategy extends LoginStrategy {
     this.ssoEmail2FaSessionToken$ = this.cache.pipe(map((state) => state.ssoEmail2FaSessionToken));
   }
 
-  async logIn(credentials: SsoLoginCredentials) {
+  async logIn(credentials: SsoLoginCredentials): Promise<AuthResult> {
     const data = new SsoLoginStrategyData();
     data.orgId = credentials.orgId;
 
@@ -147,10 +104,9 @@ export class SsoLoginStrategy extends LoginStrategy {
 
     // Auth guard currently handles redirects for this.
     if (ssoAuthResult.forcePasswordReset == ForceSetPasswordReason.AdminForcePasswordReset) {
-      const userId = (await firstValueFrom(this.accountService.activeAccount$))?.id;
       await this.masterPasswordService.setForceSetPasswordReason(
         ssoAuthResult.forcePasswordReset,
-        userId,
+        ssoAuthResult.userId,
       );
     }
 
@@ -163,7 +119,7 @@ export class SsoLoginStrategy extends LoginStrategy {
     return ssoAuthResult;
   }
 
-  protected override async setMasterKey(tokenResponse: IdentityTokenResponse) {
+  protected override async setMasterKey(tokenResponse: IdentityTokenResponse, userId: UserId) {
     // The only way we can be setting a master key at this point is if we are using Key Connector.
     // First, check to make sure that we should do so based on the token response.
     if (this.shouldSetMasterKeyFromKeyConnector(tokenResponse)) {
@@ -175,10 +131,11 @@ export class SsoLoginStrategy extends LoginStrategy {
         await this.keyConnectorService.convertNewSsoUserToKeyConnector(
           tokenResponse,
           this.cache.value.orgId,
+          userId,
         );
       } else {
         const keyConnectorUrl = this.getKeyConnectorUrl(tokenResponse);
-        await this.keyConnectorService.setMasterKeyFromUrl(keyConnectorUrl);
+        await this.keyConnectorService.setMasterKeyFromUrl(keyConnectorUrl, userId);
       }
     }
   }
@@ -231,7 +188,7 @@ export class SsoLoginStrategy extends LoginStrategy {
 
     if (masterKeyEncryptedUserKey) {
       // set the master key encrypted user key if it exists
-      await this.cryptoService.setMasterKeyEncryptedUserKey(masterKeyEncryptedUserKey);
+      await this.cryptoService.setMasterKeyEncryptedUserKey(masterKeyEncryptedUserKey, userId);
     }
 
     const userDecryptionOptions = tokenResponse?.userDecryptionOptions;
@@ -240,18 +197,18 @@ export class SsoLoginStrategy extends LoginStrategy {
     if (userDecryptionOptions?.trustedDeviceOption) {
       await this.trySetUserKeyWithApprovedAdminRequestIfExists(userId);
 
-      const hasUserKey = await this.cryptoService.hasUserKey();
+      const hasUserKey = await this.cryptoService.hasUserKey(userId);
 
       // Only try to set user key with device key if admin approval request was not successful
       if (!hasUserKey) {
-        await this.trySetUserKeyWithDeviceKey(tokenResponse);
+        await this.trySetUserKeyWithDeviceKey(tokenResponse, userId);
       }
     } else if (
       masterKeyEncryptedUserKey != null &&
       this.getKeyConnectorUrl(tokenResponse) != null
     ) {
       // Key connector enabled for user
-      await this.trySetUserKeyWithMasterKey();
+      await this.trySetUserKeyWithMasterKey(userId);
     }
 
     // Note: In the traditional SSO flow with MP without key connector, the lock component
@@ -312,10 +269,11 @@ export class SsoLoginStrategy extends LoginStrategy {
     }
   }
 
-  private async trySetUserKeyWithDeviceKey(tokenResponse: IdentityTokenResponse): Promise<void> {
+  private async trySetUserKeyWithDeviceKey(
+    tokenResponse: IdentityTokenResponse,
+    userId: UserId,
+  ): Promise<void> {
     const trustedDeviceOption = tokenResponse.userDecryptionOptions?.trustedDeviceOption;
-
-    const userId = (await this.stateService.getUserId()) as UserId;
 
     const deviceKey = await this.deviceTrustService.getDeviceKey(userId);
     const encDevicePrivateKey = trustedDeviceOption?.encryptedPrivateKey;
@@ -337,8 +295,7 @@ export class SsoLoginStrategy extends LoginStrategy {
     }
   }
 
-  private async trySetUserKeyWithMasterKey(): Promise<void> {
-    const userId = (await firstValueFrom(this.accountService.activeAccount$))?.id;
+  private async trySetUserKeyWithMasterKey(userId: UserId): Promise<void> {
     const masterKey = await firstValueFrom(this.masterPasswordService.masterKey$(userId));
 
     // There is a scenario in which the master key is not set here. That will occur if the user
@@ -349,16 +306,20 @@ export class SsoLoginStrategy extends LoginStrategy {
       return;
     }
 
-    const userKey = await this.cryptoService.decryptUserKeyWithMasterKey(masterKey);
+    const userKey = await this.masterPasswordService.decryptUserKeyWithMasterKey(masterKey);
     await this.cryptoService.setUserKey(userKey);
   }
 
-  protected override async setPrivateKey(tokenResponse: IdentityTokenResponse): Promise<void> {
+  protected override async setPrivateKey(
+    tokenResponse: IdentityTokenResponse,
+    userId: UserId,
+  ): Promise<void> {
     const newSsoUser = tokenResponse.key == null;
 
     if (!newSsoUser) {
       await this.cryptoService.setPrivateKey(
-        tokenResponse.privateKey ?? (await this.createKeyPairForOldAccount()),
+        tokenResponse.privateKey ?? (await this.createKeyPairForOldAccount(userId)),
+        userId,
       );
     }
   }

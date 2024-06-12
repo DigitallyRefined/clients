@@ -2,9 +2,11 @@ import { Component, OnInit } from "@angular/core";
 
 import { ModalService } from "@bitwarden/angular/services/modal.service";
 import { OrganizationService } from "@bitwarden/common/admin-console/abstractions/organization/organization.service.abstraction";
+import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
 import { Utils } from "@bitwarden/common/platform/misc/utils";
 import { CipherService } from "@bitwarden/common/vault/abstractions/cipher.service";
+import { SyncService } from "@bitwarden/common/vault/abstractions/sync/sync.service.abstraction";
 import { CipherType } from "@bitwarden/common/vault/enums";
 import { CipherView } from "@bitwarden/common/vault/models/view/cipher.view";
 import { PasswordRepromptService } from "@bitwarden/vault";
@@ -26,8 +28,17 @@ export class InactiveTwoFactorReportComponent extends CipherReportComponent impl
     modalService: ModalService,
     private logService: LogService,
     passwordRepromptService: PasswordRepromptService,
+    i18nService: I18nService,
+    syncService: SyncService,
   ) {
-    super(modalService, passwordRepromptService, organizationService);
+    super(
+      cipherService,
+      modalService,
+      passwordRepromptService,
+      organizationService,
+      i18nService,
+      syncService,
+    );
   }
 
   async ngOnInit() {
@@ -45,6 +56,7 @@ export class InactiveTwoFactorReportComponent extends CipherReportComponent impl
       const allCiphers = await this.getAllCiphers();
       const inactive2faCiphers: CipherView[] = [];
       const docs = new Map<string, string>();
+      this.filterStatus = [0];
 
       allCiphers.forEach((ciph) => {
         const { type, login, isDeleted, edit, id, viewPassword } = ciph;
@@ -58,6 +70,7 @@ export class InactiveTwoFactorReportComponent extends CipherReportComponent impl
         ) {
           return;
         }
+
         for (let i = 0; i < login.uris.length; i++) {
           const u = login.uris[i];
           if (u.uri != null && u.uri !== "") {
@@ -75,13 +88,10 @@ export class InactiveTwoFactorReportComponent extends CipherReportComponent impl
           }
         }
       });
-      this.ciphers = [...inactive2faCiphers];
+
+      this.filterCiphersByOrg(inactive2faCiphers);
       this.cipherDocs = docs;
     }
-  }
-
-  protected getAllCiphers(): Promise<CipherView[]> {
-    return this.cipherService.getAllDecrypted();
   }
 
   private async load2fa() {

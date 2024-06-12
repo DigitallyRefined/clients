@@ -58,6 +58,7 @@ describe("AccountSwitcherService", () => {
       const accountInfo: AccountInfo = {
         name: "Test User 1",
         email: "test1@email.com",
+        emailVerified: true,
       };
 
       avatarService.getUserAvatarColor$.mockReturnValue(of("#cccccc"));
@@ -89,6 +90,7 @@ describe("AccountSwitcherService", () => {
         for (let i = 0; i < numberOfAccounts; i++) {
           seedAccounts[`${i}` as UserId] = {
             email: `test${i}@email.com`,
+            emailVerified: true,
             name: "Test User ${i}",
           };
           seedStatuses[`${i}` as UserId] = AuthenticationStatus.Unlocked;
@@ -113,6 +115,7 @@ describe("AccountSwitcherService", () => {
       const user1AccountInfo: AccountInfo = {
         name: "Test User 1",
         email: "",
+        emailVerified: true,
       };
       accountsSubject.next({ ["1" as UserId]: user1AccountInfo });
       authStatusSubject.next({ ["1" as UserId]: AuthenticationStatus.LoggedOut });
@@ -150,7 +153,7 @@ describe("AccountSwitcherService", () => {
 
       await selectAccountPromise;
 
-      expect(accountService.switchAccount).toBeCalledWith(null);
+      expect(messagingService.send).toHaveBeenCalledWith("switchAccount", { userId: null });
 
       expect(removeListenerSpy).toBeCalledTimes(1);
     });
@@ -173,13 +176,44 @@ describe("AccountSwitcherService", () => {
 
       await selectAccountPromise;
 
-      expect(accountService.switchAccount).toBeCalledWith("1");
+      expect(messagingService.send).toHaveBeenCalledWith("switchAccount", { userId: "1" });
       expect(messagingService.send).toBeCalledWith(
         "switchAccount",
         matches((payload) => {
           return payload.userId === "1";
         }),
       );
+      expect(removeListenerSpy).toBeCalledTimes(1);
+    });
+  });
+
+  describe("logout", () => {
+    const userId1 = "1" as UserId;
+    const userId2 = "2" as UserId;
+    it("initiates logout", async () => {
+      let listener: (
+        message: { command: string; userId: UserId; status: AuthenticationStatus },
+        sender: unknown,
+        sendResponse: unknown,
+      ) => void;
+      jest.spyOn(chrome.runtime.onMessage, "addListener").mockImplementation((addedListener) => {
+        listener = addedListener;
+      });
+
+      const removeListenerSpy = jest.spyOn(chrome.runtime.onMessage, "removeListener");
+
+      const logoutPromise = accountSwitcherService.logoutAccount(userId1);
+
+      listener(
+        { command: "switchAccountFinish", userId: userId2, status: AuthenticationStatus.Unlocked },
+        undefined,
+        undefined,
+      );
+
+      const result = await logoutPromise;
+
+      expect(messagingService.send).toHaveBeenCalledWith("logout", { userId: userId1 });
+      expect(result).toEqual({ newUserId: userId2, status: AuthenticationStatus.Unlocked });
       expect(removeListenerSpy).toBeCalledTimes(1);
     });
   });

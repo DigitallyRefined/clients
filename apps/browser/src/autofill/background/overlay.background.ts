@@ -54,22 +54,27 @@ class OverlayBackground implements OverlayBackgroundInterface {
   private userAuthStatus: AuthenticationStatus = AuthenticationStatus.LoggedOut;
   private overlayButtonPort: chrome.runtime.Port;
   private overlayListPort: chrome.runtime.Port;
+  private expiredPorts: chrome.runtime.Port[] = [];
   private focusedFieldData: FocusedFieldData;
   private overlayPageTranslations: Record<string, string>;
   private iconsServerUrl: string;
   private readonly extensionMessageHandlers: OverlayBackgroundExtensionMessageHandlers = {
     openAutofillOverlay: () => this.openOverlay(false),
-    autofillOverlayElementClosed: ({ message }) => this.overlayElementClosed(message),
+    autofillOverlayElementClosed: ({ message, sender }) =>
+      this.overlayElementClosed(message, sender),
     autofillOverlayAddNewVaultItem: ({ message, sender }) => this.addNewVaultItem(message, sender),
     getAutofillOverlayVisibility: () => this.getOverlayVisibility(),
     checkAutofillOverlayFocused: () => this.checkOverlayFocused(),
     focusAutofillOverlayList: () => this.focusOverlayList(),
-    updateAutofillOverlayPosition: ({ message }) => this.updateOverlayPosition(message),
+    updateAutofillOverlayPosition: ({ message, sender }) =>
+      this.updateOverlayPosition(message, sender),
     updateAutofillOverlayHidden: ({ message }) => this.updateOverlayHidden(message),
-    updateFocusedFieldData: ({ message }) => this.setFocusedFieldData(message),
+    updateFocusedFieldData: ({ message, sender }) => this.setFocusedFieldData(message, sender),
     collectPageDetailsResponse: ({ message, sender }) => this.storePageDetails(message, sender),
     unlockCompleted: ({ message }) => this.unlockCompleted(message),
+    addedCipher: () => this.updateOverlayCiphers(),
     addEditCipherSubmitted: () => this.updateOverlayCiphers(),
+    editedCipher: () => this.updateOverlayCiphers(),
     deletedCipher: () => this.updateOverlayCiphers(),
   };
   private readonly overlayButtonPortMessageHandlers: OverlayButtonPortMessageHandlers = {
@@ -136,7 +141,8 @@ class OverlayBackground implements OverlayBackgroundInterface {
    * list of ciphers if the extension is not unlocked.
    */
   async updateOverlayCiphers() {
-    if (this.userAuthStatus !== AuthenticationStatus.Unlocked) {
+    const authStatus = await firstValueFrom(this.authService.activeAccountStatus$);
+    if (authStatus !== AuthenticationStatus.Unlocked) {
       return;
     }
 
@@ -167,7 +173,7 @@ class OverlayBackground implements OverlayBackgroundInterface {
   private async getOverlayCipherData(): Promise<OverlayCipherData[]> {
     const showFavicons = await firstValueFrom(this.domainSettingsService.showFavicons$);
     const overlayCiphersArray = Array.from(this.overlayLoginCiphers);
-    const overlayCipherData = [];
+    const overlayCipherData: OverlayCipherData[] = [];
     let loginCipherIcon: WebsiteIconData;
 
     for (let cipherIndex = 0; cipherIndex < overlayCiphersArray.length; cipherIndex++) {
@@ -301,8 +307,18 @@ class OverlayBackground implements OverlayBackgroundInterface {
    * the list and button ports and sets them to null.
    *
    * @param overlayElement - The overlay element that was closed, either the list or button
+   * @param sender - The sender of the port message
    */
-  private overlayElementClosed({ overlayElement }: OverlayBackgroundExtensionMessage) {
+  private overlayElementClosed(
+    { overlayElement }: OverlayBackgroundExtensionMessage,
+    sender: chrome.runtime.MessageSender,
+  ) {
+    if (sender.tab.id !== this.focusedFieldData?.tabId) {
+      this.expiredPorts.forEach((port) => port.disconnect());
+      this.expiredPorts = [];
+      return;
+    }
+
     if (overlayElement === AutofillOverlayElement.Button) {
       this.overlayButtonPort?.disconnect();
       this.overlayButtonPort = null;
@@ -319,9 +335,13 @@ class OverlayBackground implements OverlayBackgroundInterface {
    * is based on the focused field's position and dimensions.
    *
    * @param overlayElement - The overlay element to update, either the list or button
+   * @param sender - The sender of the port message
    */
-  private updateOverlayPosition({ overlayElement }: { overlayElement?: string }) {
-    if (!overlayElement) {
+  private updateOverlayPosition(
+    { overlayElement }: { overlayElement?: string },
+    sender: chrome.runtime.MessageSender,
+  ) {
+    if (!overlayElement || sender.tab.id !== this.focusedFieldData?.tabId) {
       return;
     }
 
@@ -395,9 +415,13 @@ class OverlayBackground implements OverlayBackgroundInterface {
    * Sets the focused field data to the data passed in the extension message.
    *
    * @param focusedFieldData - Contains the rects and styles of the focused field.
+   * @param sender - The sender of the extension message
    */
-  private setFocusedFieldData({ focusedFieldData }: OverlayBackgroundExtensionMessage) {
-    this.focusedFieldData = focusedFieldData;
+  private setFocusedFieldData(
+    { focusedFieldData }: OverlayBackgroundExtensionMessage,
+    sender: chrome.runtime.MessageSender,
+  ) {
+    this.focusedFieldData = { ...focusedFieldData, tabId: sender.tab.id };
   }
 
   /**
@@ -689,17 +713,11 @@ class OverlayBackground implements OverlayBackgroundInterface {
   private handlePortOnConnect = async (port: chrome.runtime.Port) => {
     const isOverlayListPort = port.name === AutofillOverlayPort.List;
     const isOverlayButtonPort = port.name === AutofillOverlayPort.Button;
-
     if (!isOverlayListPort && !isOverlayButtonPort) {
       return;
     }
 
-    if (isOverlayListPort) {
-      this.overlayListPort = port;
-    } else {
-      this.overlayButtonPort = port;
-    }
-
+    this.storeOverlayPort(port);
     port.onMessage.addListener(this.handleOverlayElementPortMessage);
     port.postMessage({
       command: `initAutofillOverlay${isOverlayListPort ? "List" : "Button"}`,
@@ -709,12 +727,46 @@ class OverlayBackground implements OverlayBackgroundInterface {
       translations: this.getTranslations(),
       ciphers: isOverlayListPort ? await this.getOverlayCipherData() : null,
     });
-    this.updateOverlayPosition({
-      overlayElement: isOverlayListPort
-        ? AutofillOverlayElement.List
-        : AutofillOverlayElement.Button,
-    });
+    this.updateOverlayPosition(
+      {
+        overlayElement: isOverlayListPort
+          ? AutofillOverlayElement.List
+          : AutofillOverlayElement.Button,
+      },
+      port.sender,
+    );
   };
+
+  /**
+   * Stores the connected overlay port and sets up any existing ports to be disconnected.
+   *
+   * @param port - The port to store
+|   */
+  private storeOverlayPort(port: chrome.runtime.Port) {
+    if (port.name === AutofillOverlayPort.List) {
+      this.storeExpiredOverlayPort(this.overlayListPort);
+      this.overlayListPort = port;
+      return;
+    }
+
+    if (port.name === AutofillOverlayPort.Button) {
+      this.storeExpiredOverlayPort(this.overlayButtonPort);
+      this.overlayButtonPort = port;
+    }
+  }
+
+  /**
+   * When registering a new connection, we want to ensure that the port is disconnected.
+   * This method places an existing port in the expiredPorts array to be disconnected
+   * at a later time.
+   *
+   * @param port - The port to store in the expiredPorts array
+   */
+  private storeExpiredOverlayPort(port: chrome.runtime.Port | null) {
+    if (port) {
+      this.expiredPorts.push(port);
+    }
+  }
 
   /**
    * Handles messages sent to the overlay list or button ports.

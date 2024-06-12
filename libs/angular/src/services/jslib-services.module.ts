@@ -4,8 +4,8 @@ import { Subject } from "rxjs";
 import {
   AuthRequestServiceAbstraction,
   AuthRequestService,
-  PinCryptoServiceAbstraction,
-  PinCryptoService,
+  PinServiceAbstraction,
+  PinService,
   LoginStrategyServiceAbstraction,
   LoginStrategyService,
   LoginEmailServiceAbstraction,
@@ -13,6 +13,7 @@ import {
   InternalUserDecryptionOptionsServiceAbstraction,
   UserDecryptionOptionsService,
   UserDecryptionOptionsServiceAbstraction,
+  LogoutReason,
 } from "@bitwarden/auth/common";
 import { ApiService as ApiServiceAbstraction } from "@bitwarden/common/abstractions/api.service";
 import { AuditService as AuditServiceAbstraction } from "@bitwarden/common/abstractions/audit.service";
@@ -53,7 +54,6 @@ import { ProviderApiService } from "@bitwarden/common/admin-console/services/pro
 import { ProviderService } from "@bitwarden/common/admin-console/services/provider.service";
 import { AccountApiService as AccountApiServiceAbstraction } from "@bitwarden/common/auth/abstractions/account-api.service";
 import {
-  AccountService,
   AccountService as AccountServiceAbstraction,
   InternalAccountService,
 } from "@bitwarden/common/auth/abstractions/account.service";
@@ -110,14 +110,20 @@ import {
   DomainSettingsService,
   DefaultDomainSettingsService,
 } from "@bitwarden/common/autofill/services/domain-settings.service";
+import {
+  BillingApiServiceAbstraction,
+  BraintreeServiceAbstraction,
+  OrganizationBillingServiceAbstraction,
+  PaymentMethodWarningsServiceAbstraction,
+  StripeServiceAbstraction,
+} from "@bitwarden/common/billing/abstractions";
 import { BillingAccountProfileStateService } from "@bitwarden/common/billing/abstractions/account/billing-account-profile-state.service";
-import { BillingApiServiceAbstraction } from "@bitwarden/common/billing/abstractions/billilng-api.service.abstraction";
-import { OrganizationBillingServiceAbstraction } from "@bitwarden/common/billing/abstractions/organization-billing.service";
-import { PaymentMethodWarningsServiceAbstraction } from "@bitwarden/common/billing/abstractions/payment-method-warnings-service.abstraction";
 import { DefaultBillingAccountProfileStateService } from "@bitwarden/common/billing/services/account/billing-account-profile-state.service";
 import { BillingApiService } from "@bitwarden/common/billing/services/billing-api.service";
 import { OrganizationBillingService } from "@bitwarden/common/billing/services/organization-billing.service";
 import { PaymentMethodWarningsService } from "@bitwarden/common/billing/services/payment-method-warnings.service";
+import { BraintreeService } from "@bitwarden/common/billing/services/payment-processors/braintree.service";
+import { StripeService } from "@bitwarden/common/billing/services/payment-processors/stripe.service";
 import { AppIdService as AppIdServiceAbstraction } from "@bitwarden/common/platform/abstractions/app-id.service";
 import { BroadcasterService } from "@bitwarden/common/platform/abstractions/broadcaster.service";
 import { ConfigApiServiceAbstraction } from "@bitwarden/common/platform/abstractions/config/config-api.service.abstraction";
@@ -162,7 +168,7 @@ import { MigrationRunner } from "@bitwarden/common/platform/services/migration-r
 import { NoopNotificationsService } from "@bitwarden/common/platform/services/noop-notifications.service";
 import { StateService } from "@bitwarden/common/platform/services/state.service";
 import { StorageServiceProvider } from "@bitwarden/common/platform/services/storage-service.provider";
-import { UserKeyInitService } from "@bitwarden/common/platform/services/user-key-init.service";
+import { UserAutoUnlockKeyService } from "@bitwarden/common/platform/services/user-auto-unlock-key.service";
 import { ValidationService } from "@bitwarden/common/platform/services/validation.service";
 import { WebCryptoFunctionService } from "@bitwarden/common/platform/services/web-crypto-function.service";
 import {
@@ -181,6 +187,9 @@ import { DefaultStateProvider } from "@bitwarden/common/platform/state/implement
 import { StateEventRegistrarService } from "@bitwarden/common/platform/state/state-event-registrar.service";
 import { StateEventRunnerService } from "@bitwarden/common/platform/state/state-event-runner.service";
 /* eslint-enable import/no-restricted-paths */
+import { SyncService } from "@bitwarden/common/platform/sync";
+// eslint-disable-next-line no-restricted-imports -- Needed for DI
+import { DefaultSyncService } from "@bitwarden/common/platform/sync/internal";
 import {
   DefaultThemeStateService,
   ThemeStateService,
@@ -194,13 +203,11 @@ import { SearchService } from "@bitwarden/common/services/search.service";
 import { VaultTimeoutSettingsService } from "@bitwarden/common/services/vault-timeout/vault-timeout-settings.service";
 import { VaultTimeoutService } from "@bitwarden/common/services/vault-timeout/vault-timeout.service";
 import {
-  PasswordGenerationService,
-  PasswordGenerationServiceAbstraction,
-} from "@bitwarden/common/tools/generator/password";
-import {
-  UsernameGenerationService,
-  UsernameGenerationServiceAbstraction,
-} from "@bitwarden/common/tools/generator/username";
+  legacyPasswordGenerationServiceFactory,
+  legacyUsernameGenerationServiceFactory,
+} from "@bitwarden/common/tools/generator";
+import { PasswordGenerationServiceAbstraction } from "@bitwarden/common/tools/generator/password";
+import { UsernameGenerationServiceAbstraction } from "@bitwarden/common/tools/generator/username";
 import {
   PasswordStrengthService,
   PasswordStrengthServiceAbstraction,
@@ -222,8 +229,6 @@ import {
   FolderService as FolderServiceAbstraction,
   InternalFolderService,
 } from "@bitwarden/common/vault/abstractions/folder/folder.service.abstraction";
-import { SyncNotifierService as SyncNotifierServiceAbstraction } from "@bitwarden/common/vault/abstractions/sync/sync-notifier.service.abstraction";
-import { SyncService as SyncServiceAbstraction } from "@bitwarden/common/vault/abstractions/sync/sync.service.abstraction";
 import { TotpService as TotpServiceAbstraction } from "@bitwarden/common/vault/abstractions/totp.service";
 import { VaultSettingsService as VaultSettingsServiceAbstraction } from "@bitwarden/common/vault/abstractions/vault-settings/vault-settings.service";
 import { CipherService } from "@bitwarden/common/vault/services/cipher.service";
@@ -231,10 +236,9 @@ import { CollectionService } from "@bitwarden/common/vault/services/collection.s
 import { CipherFileUploadService } from "@bitwarden/common/vault/services/file-upload/cipher-file-upload.service";
 import { FolderApiService } from "@bitwarden/common/vault/services/folder/folder-api.service";
 import { FolderService } from "@bitwarden/common/vault/services/folder/folder.service";
-import { SyncNotifierService } from "@bitwarden/common/vault/services/sync/sync-notifier.service";
-import { SyncService } from "@bitwarden/common/vault/services/sync/sync.service";
 import { TotpService } from "@bitwarden/common/vault/services/totp.service";
 import { VaultSettingsService } from "@bitwarden/common/vault/services/vault-settings/vault-settings.service";
+import { ToastService } from "@bitwarden/components";
 import {
   ImportApiService,
   ImportApiServiceAbstraction,
@@ -275,7 +279,10 @@ import {
   SYSTEM_LANGUAGE,
   SYSTEM_THEME_OBSERVABLE,
   WINDOW,
+  DEFAULT_VAULT_TIMEOUT,
   INTRAPROCESS_MESSAGING_SUBJECT,
+  CLIENT_TYPE,
+  REFRESH_ACCESS_TOKEN_ERROR_CALLBACK,
 } from "./injection-tokens";
 import { ModalService } from "./modal.service";
 
@@ -317,8 +324,12 @@ const safeProviders: SafeProvider[] = [
   safeProvider({
     provide: LOGOUT_CALLBACK,
     useFactory:
-      (messagingService: MessagingServiceAbstraction) => (expired: boolean, userId?: string) =>
-        Promise.resolve(messagingService.send("logout", { expired: expired, userId: userId })),
+      (messagingService: MessagingServiceAbstraction) =>
+      async (logoutReason: LogoutReason, userId?: string) => {
+        return Promise.resolve(
+          messagingService.send("logout", { logoutReason: logoutReason, userId: userId }),
+        );
+      },
     deps: [MessagingServiceAbstraction],
   }),
   safeProvider({
@@ -392,6 +403,7 @@ const safeProviders: SafeProvider[] = [
       InternalUserDecryptionOptionsServiceAbstraction,
       GlobalStateProvider,
       BillingAccountProfileStateService,
+      VaultTimeoutSettingsServiceAbstraction,
       KdfConfigServiceAbstraction,
     ],
   }),
@@ -526,6 +538,7 @@ const safeProviders: SafeProvider[] = [
       KeyGenerationServiceAbstraction,
       EncryptService,
       LogService,
+      LOGOUT_CALLBACK,
     ],
   }),
   safeProvider({
@@ -537,6 +550,7 @@ const safeProviders: SafeProvider[] = [
     provide: CryptoServiceAbstraction,
     useClass: CryptoService,
     deps: [
+      PinServiceAbstraction,
       InternalMasterPasswordServiceAbstraction,
       KeyGenerationServiceAbstraction,
       CryptoFunctionServiceAbstraction,
@@ -556,13 +570,38 @@ const safeProviders: SafeProvider[] = [
   }),
   safeProvider({
     provide: PasswordGenerationServiceAbstraction,
-    useClass: PasswordGenerationService,
-    deps: [CryptoServiceAbstraction, PolicyServiceAbstraction, StateServiceAbstraction],
+    useFactory: legacyPasswordGenerationServiceFactory,
+    deps: [
+      EncryptService,
+      CryptoServiceAbstraction,
+      PolicyServiceAbstraction,
+      AccountServiceAbstraction,
+      StateProvider,
+    ],
   }),
   safeProvider({
     provide: UsernameGenerationServiceAbstraction,
-    useClass: UsernameGenerationService,
-    deps: [CryptoServiceAbstraction, StateServiceAbstraction, ApiServiceAbstraction],
+    useFactory: legacyUsernameGenerationServiceFactory,
+    deps: [
+      ApiServiceAbstraction,
+      I18nServiceAbstraction,
+      CryptoServiceAbstraction,
+      EncryptService,
+      PolicyServiceAbstraction,
+      AccountServiceAbstraction,
+      StateProvider,
+    ],
+  }),
+  safeProvider({
+    provide: REFRESH_ACCESS_TOKEN_ERROR_CALLBACK,
+    useFactory: (toastService: ToastService, i18nService: I18nServiceAbstraction) => () => {
+      toastService.showToast({
+        variant: "error",
+        title: i18nService.t("errorRefreshingAccessToken"),
+        message: i18nService.t("errorRefreshingAccessTokenDesc"),
+      });
+    },
+    deps: [ToastService, I18nServiceAbstraction],
   }),
   safeProvider({
     provide: ApiServiceAbstraction,
@@ -572,8 +611,10 @@ const safeProviders: SafeProvider[] = [
       PlatformUtilsServiceAbstraction,
       EnvironmentService,
       AppIdServiceAbstraction,
-      StateServiceAbstraction,
+      REFRESH_ACCESS_TOKEN_ERROR_CALLBACK,
+      LogService,
       LOGOUT_CALLBACK,
+      VaultTimeoutSettingsServiceAbstraction,
     ],
   }),
   safeProvider({
@@ -602,8 +643,8 @@ const safeProviders: SafeProvider[] = [
     deps: [ApiServiceAbstraction, FileUploadServiceAbstraction, InternalSendService],
   }),
   safeProvider({
-    provide: SyncServiceAbstraction,
-    useClass: SyncService,
+    provide: SyncService,
+    useClass: DefaultSyncService,
     deps: [
       InternalMasterPasswordServiceAbstraction,
       AccountServiceAbstraction,
@@ -628,23 +669,28 @@ const safeProviders: SafeProvider[] = [
       LOGOUT_CALLBACK,
       BillingAccountProfileStateService,
       TokenServiceAbstraction,
+      AuthServiceAbstraction,
     ],
   }),
   safeProvider({
     provide: BroadcasterService,
     useClass: DefaultBroadcasterService,
-    deps: [MessageSender, MessageListener],
+    deps: [MessageListener],
   }),
   safeProvider({
     provide: VaultTimeoutSettingsServiceAbstraction,
     useClass: VaultTimeoutSettingsService,
     deps: [
+      AccountServiceAbstraction,
+      PinServiceAbstraction,
       UserDecryptionOptionsServiceAbstraction,
       CryptoServiceAbstraction,
       TokenServiceAbstraction,
       PolicyServiceAbstraction,
-      StateServiceAbstraction,
       BiometricStateService,
+      StateProvider,
+      LogService,
+      DEFAULT_VAULT_TIMEOUT,
     ],
   }),
   safeProvider({
@@ -656,7 +702,6 @@ const safeProviders: SafeProvider[] = [
       CipherServiceAbstraction,
       FolderServiceAbstraction,
       CollectionServiceAbstraction,
-      CryptoServiceAbstraction,
       PlatformUtilsServiceAbstraction,
       MessagingServiceAbstraction,
       SearchServiceAbstraction,
@@ -707,6 +752,7 @@ const safeProviders: SafeProvider[] = [
       I18nServiceAbstraction,
       CollectionServiceAbstraction,
       CryptoServiceAbstraction,
+      PinServiceAbstraction,
     ],
   }),
   safeProvider({
@@ -715,6 +761,7 @@ const safeProviders: SafeProvider[] = [
     deps: [
       FolderServiceAbstraction,
       CipherServiceAbstraction,
+      PinServiceAbstraction,
       CryptoServiceAbstraction,
       CryptoFunctionServiceAbstraction,
       KdfConfigServiceAbstraction,
@@ -726,6 +773,7 @@ const safeProviders: SafeProvider[] = [
     deps: [
       CipherServiceAbstraction,
       ApiServiceAbstraction,
+      PinServiceAbstraction,
       CryptoServiceAbstraction,
       CryptoFunctionServiceAbstraction,
       CollectionServiceAbstraction,
@@ -747,7 +795,7 @@ const safeProviders: SafeProvider[] = [
     useClass: devFlagEnabled("noopNotifications") ? NoopNotificationsService : NotificationsService,
     deps: [
       LogService,
-      SyncServiceAbstraction,
+      SyncService,
       AppIdServiceAbstraction,
       ApiServiceAbstraction,
       EnvironmentService,
@@ -801,7 +849,7 @@ const safeProviders: SafeProvider[] = [
   safeProvider({
     provide: InternalMasterPasswordServiceAbstraction,
     useClass: MasterPasswordService,
-    deps: [StateProvider],
+    deps: [StateProvider, StateServiceAbstraction, KeyGenerationServiceAbstraction, EncryptService],
   }),
   safeProvider({
     provide: MasterPasswordServiceAbstraction,
@@ -834,7 +882,7 @@ const safeProviders: SafeProvider[] = [
       I18nServiceAbstraction,
       UserVerificationApiServiceAbstraction,
       UserDecryptionOptionsServiceAbstraction,
-      PinCryptoServiceAbstraction,
+      PinServiceAbstraction,
       LogService,
       VaultTimeoutSettingsServiceAbstraction,
       PlatformUtilsServiceAbstraction,
@@ -893,12 +941,7 @@ const safeProviders: SafeProvider[] = [
     // it depends on SyncService so that new data can be retrieved through the sync
     // rather than updating the OrganizationService directly. Instead OrganizationService
     // subscribes to sync notifications and will update itself based on that.
-    deps: [ApiServiceAbstraction, SyncServiceAbstraction],
-  }),
-  safeProvider({
-    provide: SyncNotifierServiceAbstraction,
-    useClass: SyncNotifierService,
-    deps: [],
+    deps: [ApiServiceAbstraction, SyncService],
   }),
   safeProvider({
     provide: DefaultConfigService,
@@ -968,6 +1011,7 @@ const safeProviders: SafeProvider[] = [
       StateProvider,
       SECURE_STORAGE,
       UserDecryptionOptionsServiceAbstraction,
+      LogService,
     ],
   }),
   safeProvider({
@@ -983,14 +1027,18 @@ const safeProviders: SafeProvider[] = [
     ],
   }),
   safeProvider({
-    provide: PinCryptoServiceAbstraction,
-    useClass: PinCryptoService,
+    provide: PinServiceAbstraction,
+    useClass: PinService,
     deps: [
-      StateServiceAbstraction,
-      CryptoServiceAbstraction,
-      VaultTimeoutSettingsServiceAbstraction,
-      LogService,
+      AccountServiceAbstraction,
+      CryptoFunctionServiceAbstraction,
+      EncryptService,
       KdfConfigServiceAbstraction,
+      KeyGenerationServiceAbstraction,
+      LogService,
+      MasterPasswordServiceAbstraction,
+      StateProvider,
+      StateServiceAbstraction,
     ],
   }),
   safeProvider({
@@ -1047,7 +1095,7 @@ const safeProviders: SafeProvider[] = [
   safeProvider({
     provide: DerivedStateProvider,
     useClass: DefaultDerivedStateProvider,
-    deps: [StorageServiceProvider],
+    deps: [],
   }),
   safeProvider({
     provide: StateProvider,
@@ -1068,7 +1116,7 @@ const safeProviders: SafeProvider[] = [
       EncryptService,
       I18nServiceAbstraction,
       OrganizationApiServiceAbstraction,
-      SyncServiceAbstraction,
+      SyncService,
     ],
   }),
   safeProvider({
@@ -1099,7 +1147,7 @@ const safeProviders: SafeProvider[] = [
   safeProvider({
     provide: MigrationRunner,
     useClass: MigrationRunner,
-    deps: [AbstractStorageService, LogService, MigrationBuilderService],
+    deps: [AbstractStorageService, LogService, MigrationBuilderService, CLIENT_TYPE],
   }),
   safeProvider({
     provide: MigrationBuilderService,
@@ -1127,9 +1175,9 @@ const safeProviders: SafeProvider[] = [
     deps: [StateProvider],
   }),
   safeProvider({
-    provide: UserKeyInitService,
-    useClass: UserKeyInitService,
-    deps: [AccountService, CryptoServiceAbstraction, LogService],
+    provide: UserAutoUnlockKeyService,
+    useClass: UserAutoUnlockKeyService,
+    deps: [CryptoServiceAbstraction],
   }),
   safeProvider({
     provide: ErrorHandler,
@@ -1138,17 +1186,19 @@ const safeProviders: SafeProvider[] = [
   }),
   safeProvider({
     provide: INTRAPROCESS_MESSAGING_SUBJECT,
-    useFactory: () => new Subject<Message<object>>(),
+    useFactory: () => new Subject<Message<Record<string, unknown>>>(),
     deps: [],
   }),
   safeProvider({
     provide: MessageListener,
-    useFactory: (subject: Subject<Message<object>>) => new MessageListener(subject.asObservable()),
+    useFactory: (subject: Subject<Message<Record<string, unknown>>>) =>
+      new MessageListener(subject.asObservable()),
     deps: [INTRAPROCESS_MESSAGING_SUBJECT],
   }),
   safeProvider({
     provide: MessageSender,
-    useFactory: (subject: Subject<Message<object>>) => new SubjectMessageSender(subject),
+    useFactory: (subject: Subject<Message<Record<string, unknown>>>) =>
+      new SubjectMessageSender(subject),
     deps: [INTRAPROCESS_MESSAGING_SUBJECT],
   }),
   safeProvider({
@@ -1160,6 +1210,16 @@ const safeProviders: SafeProvider[] = [
     provide: KdfConfigServiceAbstraction,
     useClass: KdfConfigService,
     deps: [StateProvider],
+  }),
+  safeProvider({
+    provide: BraintreeServiceAbstraction,
+    useClass: BraintreeService,
+    deps: [LogService],
+  }),
+  safeProvider({
+    provide: StripeServiceAbstraction,
+    useClass: StripeService,
+    deps: [LogService],
   }),
 ];
 

@@ -2,17 +2,31 @@ import { DOCUMENT } from "@angular/common";
 import { Component, Inject, NgZone, OnDestroy, OnInit } from "@angular/core";
 import { NavigationEnd, Router } from "@angular/router";
 import * as jq from "jquery";
-import { Subject, switchMap, takeUntil, timer } from "rxjs";
+import {
+  Subject,
+  combineLatest,
+  filter,
+  firstValueFrom,
+  map,
+  switchMap,
+  takeUntil,
+  timeout,
+  timer,
+} from "rxjs";
 
+import { LogoutReason } from "@bitwarden/auth/common";
 import { EventUploadService } from "@bitwarden/common/abstractions/event/event-upload.service";
 import { NotificationsService } from "@bitwarden/common/abstractions/notifications.service";
 import { SearchService } from "@bitwarden/common/abstractions/search.service";
 import { VaultTimeoutService } from "@bitwarden/common/abstractions/vault-timeout/vault-timeout.service";
 import { InternalOrganizationServiceAbstraction } from "@bitwarden/common/admin-console/abstractions/organization/organization.service.abstraction";
 import { InternalPolicyService } from "@bitwarden/common/admin-console/abstractions/policy/policy.service.abstraction";
+import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
 import { AuthService } from "@bitwarden/common/auth/abstractions/auth.service";
 import { KeyConnectorService } from "@bitwarden/common/auth/abstractions/key-connector.service";
+import { AuthenticationStatus } from "@bitwarden/common/auth/enums/authentication-status";
 import { PaymentMethodWarningsServiceAbstraction as PaymentMethodWarningService } from "@bitwarden/common/billing/abstractions/payment-method-warnings-service.abstraction";
+import { FeatureFlag } from "@bitwarden/common/enums/feature-flag.enum";
 import { BroadcasterService } from "@bitwarden/common/platform/abstractions/broadcaster.service";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
 import { CryptoService } from "@bitwarden/common/platform/abstractions/crypto.service";
@@ -21,13 +35,13 @@ import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/pl
 import { StateService } from "@bitwarden/common/platform/abstractions/state.service";
 import { BiometricStateService } from "@bitwarden/common/platform/biometrics/biometric-state.service";
 import { StateEventRunnerService } from "@bitwarden/common/platform/state";
+import { SyncService } from "@bitwarden/common/platform/sync";
 import { PasswordGenerationServiceAbstraction } from "@bitwarden/common/tools/generator/password";
 import { UserId } from "@bitwarden/common/types/guid";
 import { CipherService } from "@bitwarden/common/vault/abstractions/cipher.service";
 import { CollectionService } from "@bitwarden/common/vault/abstractions/collection.service";
 import { InternalFolderService } from "@bitwarden/common/vault/abstractions/folder/folder.service.abstraction";
-import { SyncService } from "@bitwarden/common/vault/abstractions/sync/sync.service.abstraction";
-import { DialogService, ToastService } from "@bitwarden/components";
+import { DialogService, ToastOptions, ToastService } from "@bitwarden/components";
 
 import { PolicyListService } from "./admin-console/core/policy-list.service";
 import {
@@ -51,7 +65,7 @@ const PaymentMethodWarningsRefresh = 60000; // 1 Minute
   templateUrl: "app.component.html",
 })
 export class AppComponent implements OnDestroy, OnInit {
-  private lastActivity: number = null;
+  private lastActivity: Date = null;
   private idleTimer: number = null;
   private isIdle = false;
   private destroy$ = new Subject<void>();
@@ -86,6 +100,7 @@ export class AppComponent implements OnDestroy, OnInit {
     private stateEventRunnerService: StateEventRunnerService,
     private paymentMethodWarningService: PaymentMethodWarningService,
     private organizationService: InternalOrganizationServiceAbstraction,
+    private accountService: AccountService,
   ) {}
 
   ngOnInit() {
@@ -134,9 +149,7 @@ export class AppComponent implements OnDestroy, OnInit {
             this.router.navigate(["/"]);
             break;
           case "logout":
-            // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            this.logOut(!!message.expired, message.redirect);
+            await this.logOut(message.logoutReason, message.redirect);
             break;
           case "lockVault":
             await this.vaultTimeoutService.lock();
@@ -240,8 +253,12 @@ export class AppComponent implements OnDestroy, OnInit {
       new SendOptionsPolicy(),
     ]);
 
-    this.paymentMethodWarningsRefresh$
+    combineLatest([
+      this.configService.getFeatureFlag$(FeatureFlag.ShowPaymentMethodWarningBanners),
+      this.paymentMethodWarningsRefresh$,
+    ])
       .pipe(
+        filter(([showPaymentMethodWarningBanners]) => showPaymentMethodWarningBanners),
         switchMap(() => this.organizationService.memberOrganizations$),
         switchMap(
           async (organizations) =>
@@ -262,33 +279,68 @@ export class AppComponent implements OnDestroy, OnInit {
     this.destroy$.complete();
   }
 
-  private async logOut(expired: boolean, redirect = true) {
+  private async displayLogoutReason(logoutReason: LogoutReason) {
+    let toastOptions: ToastOptions;
+    switch (logoutReason) {
+      case "invalidSecurityStamp":
+      case "sessionExpired": {
+        toastOptions = {
+          variant: "warning",
+          title: this.i18nService.t("loggedOut"),
+          message: this.i18nService.t("loginExpired"),
+        };
+        break;
+      }
+      default: {
+        toastOptions = {
+          variant: "info",
+          title: this.i18nService.t("loggedOut"),
+          message: this.i18nService.t("loggedOutDesc"),
+        };
+        break;
+      }
+    }
+
+    this.toastService.showToast(toastOptions);
+  }
+
+  private async logOut(logoutReason: LogoutReason, redirect = true) {
+    await this.displayLogoutReason(logoutReason);
+
     await this.eventUploadService.uploadEvents();
-    const userId = await this.stateService.getUserId();
+    const userId = (await this.stateService.getUserId()) as UserId;
+
+    const logoutPromise = firstValueFrom(
+      this.authService.authStatusFor$(userId).pipe(
+        filter((authenticationStatus) => authenticationStatus === AuthenticationStatus.LoggedOut),
+        timeout({
+          first: 5_000,
+          with: () => {
+            throw new Error("The logout process did not complete in a reasonable amount of time.");
+          },
+        }),
+      ),
+    );
+
     await Promise.all([
       this.syncService.setLastSync(new Date(0)),
       this.cryptoService.clearKeys(),
       this.cipherService.clear(userId),
       this.folderService.clear(userId),
       this.collectionService.clear(userId),
-      this.passwordGenerationService.clear(),
-      this.biometricStateService.logout(userId as UserId),
+      this.biometricStateService.logout(userId),
       this.paymentMethodWarningService.clear(),
     ]);
 
-    await this.stateEventRunnerService.handleEvent("logout", userId as UserId);
+    await this.stateEventRunnerService.handleEvent("logout", userId);
 
     await this.searchService.clearIndex();
     this.authService.logOut(async () => {
-      if (expired) {
-        this.platformUtilsService.showToast(
-          "warning",
-          this.i18nService.t("loggedOut"),
-          this.i18nService.t("loginExpired"),
-        );
-      }
-
       await this.stateService.clean({ userId: userId });
+      await this.accountService.clean(userId);
+
+      await logoutPromise;
+
       if (redirect) {
         // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
         // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -298,15 +350,16 @@ export class AppComponent implements OnDestroy, OnInit {
   }
 
   private async recordActivity() {
-    const now = new Date().getTime();
-    if (this.lastActivity != null && now - this.lastActivity < 250) {
+    const activeUserId = await firstValueFrom(
+      this.accountService.activeAccount$.pipe(map((a) => a?.id)),
+    );
+    const now = new Date();
+    if (this.lastActivity != null && now.getTime() - this.lastActivity.getTime() < 250) {
       return;
     }
 
     this.lastActivity = now;
-    // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    this.stateService.setLastActive(now);
+    await this.accountService.setAccountActivity(activeUserId, now);
     // Idle states
     if (this.isIdle) {
       this.isIdle = false;

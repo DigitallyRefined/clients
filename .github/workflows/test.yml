@@ -8,16 +8,27 @@ on:
       - "main"
       - "rc"
       - "hotfix-rc-*"
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize]
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  check-run:
+    name: Check PR run
+    uses: bitwarden/gh-actions/.github/workflows/check-run.yml@main
+
   test:
     name: Run tests
     runs-on: ubuntu-22.04
+    needs: check-run
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      
     steps:
       - name: Checkout repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -48,10 +59,12 @@ jobs:
       # Tests in apps/ are typechecked when their app is built, so we just do it here for libs/
       # See https://bitwarden.atlassian.net/browse/EC-497
       - name: Run typechecking
-        run: npm run test:types --coverage
+        run: npm run test:types
 
       - name: Run tests
-        run: npm run test --coverage
+        # maxWorkers is a workaround for a memory leak that crashes tests in CI:
+        # https://github.com/facebook/jest/issues/9430#issuecomment-1149882002
+        run: npm test -- --coverage --maxWorkers=3
 
       - name: Report test results
         uses: dorny/test-reporter@eaa763f6ffc21c7a37837f56cd5f9737f27fc6c8 # v1.8.0

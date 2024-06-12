@@ -13,10 +13,13 @@ import {
   OBSERVABLE_DISK_LOCAL_STORAGE,
   WINDOW,
   SafeInjectionToken,
+  DEFAULT_VAULT_TIMEOUT,
+  CLIENT_TYPE,
 } from "@bitwarden/angular/services/injection-tokens";
 import { JslibServicesModule } from "@bitwarden/angular/services/jslib-services.module";
 import { ModalService as ModalServiceAbstraction } from "@bitwarden/angular/services/modal.service";
 import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
+import { ClientType } from "@bitwarden/common/enums";
 import { EnvironmentService } from "@bitwarden/common/platform/abstractions/environment.service";
 import { FileDownloadService } from "@bitwarden/common/platform/abstractions/file-download/file-download.service";
 import { I18nService as I18nServiceAbstraction } from "@bitwarden/common/platform/abstractions/i18n.service";
@@ -39,6 +42,7 @@ import {
   DefaultThemeStateService,
   ThemeStateService,
 } from "@bitwarden/common/platform/theming/theme-state.service";
+import { VaultTimeout, VaultTimeoutStringType } from "@bitwarden/common/types/vault-timeout.type";
 
 import { PolicyListService } from "../admin-console/core/policy-list.service";
 import { HtmlStorageService } from "../core/html-storage.service";
@@ -67,6 +71,12 @@ const safeProviders: SafeProvider[] = [
   safeProvider(RouterService),
   safeProvider(EventService),
   safeProvider(PolicyListService),
+  safeProvider({
+    provide: DEFAULT_VAULT_TIMEOUT,
+    deps: [PlatformUtilsServiceAbstraction],
+    useFactory: (platformUtilsService: PlatformUtilsServiceAbstraction): VaultTimeout =>
+      platformUtilsService.isDev() ? VaultTimeoutStringType.Never : 15,
+  }),
   safeProvider({
     provide: APP_INITIALIZER as SafeInjectionToken<() => void>,
     useFactory: (initService: InitService) => initService.init(),
@@ -156,6 +166,10 @@ const safeProviders: SafeProvider[] = [
       // Web chooses to have Light as the default theme
       new DefaultThemeStateService(globalStateProvider, ThemeType.Light),
     deps: [GlobalStateProvider],
+  }),
+  safeProvider({
+    provide: CLIENT_TYPE,
+    useValue: ClientType.Web,
   }),
 ];
 

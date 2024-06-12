@@ -1,9 +1,10 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from "@angular/core";
 import { FormControl, FormGroup } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
-import { combineLatest, Subject, switchMap, takeUntil, catchError, EMPTY } from "rxjs";
+import { combineLatest, Subject, switchMap, takeUntil, catchError } from "rxjs";
 
 import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
+import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
 import { ValidationService } from "@bitwarden/common/platform/abstractions/validation.service";
 import { DialogService } from "@bitwarden/components";
@@ -11,7 +12,7 @@ import { DialogService } from "@bitwarden/components";
 import { AccessPolicySelectorService } from "../../shared/access-policies/access-policy-selector/access-policy-selector.service";
 import {
   ApItemValueType,
-  convertToProjectPeopleAccessPoliciesView,
+  convertToPeopleAccessPoliciesView,
 } from "../../shared/access-policies/access-policy-selector/models/ap-item-value.type";
 import {
   ApItemViewType,
@@ -37,11 +38,10 @@ export class ProjectPeopleComponent implements OnInit, OnDestroy {
         return convertToAccessPolicyItemViews(policies);
       }),
     ),
-    catchError(() => {
-      // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.router.navigate(["/sm", this.organizationId, "projects"]);
-      return EMPTY;
+    catchError(async () => {
+      this.logService.info("Error fetching project people access policies.");
+      await this.router.navigate(["/sm", this.organizationId, "projects"]);
+      return undefined;
     }),
   );
 
@@ -72,6 +72,7 @@ export class ProjectPeopleComponent implements OnInit, OnDestroy {
     private platformUtilsService: PlatformUtilsService,
     private i18nService: I18nService,
     private accessPolicySelectorService: AccessPolicySelectorService,
+    private logService: LogService,
   ) {}
 
   ngOnInit(): void {
@@ -99,26 +100,26 @@ export class ProjectPeopleComponent implements OnInit, OnDestroy {
     if (this.formGroup.invalid) {
       return;
     }
+    const formValues = this.formGroup.value.accessPolicies;
+    this.formGroup.disable();
 
     const showAccessRemovalWarning =
       await this.accessPolicySelectorService.showAccessRemovalWarning(
         this.organizationId,
-        this.formGroup.value.accessPolicies,
+        formValues,
       );
 
     if (showAccessRemovalWarning) {
       const confirmed = await this.showWarning();
       if (!confirmed) {
         this.setSelected(this.currentAccessPolicies);
+        this.formGroup.enable();
         return;
       }
     }
 
     try {
-      const projectPeopleView = convertToProjectPeopleAccessPoliciesView(
-        this.projectId,
-        this.formGroup.value.accessPolicies,
-      );
+      const projectPeopleView = convertToPeopleAccessPoliciesView(formValues);
       const peoplePoliciesViews = await this.accessPolicyService.putProjectPeopleAccessPolicies(
         this.projectId,
         projectPeopleView,
@@ -126,9 +127,7 @@ export class ProjectPeopleComponent implements OnInit, OnDestroy {
       this.currentAccessPolicies = convertToAccessPolicyItemViews(peoplePoliciesViews);
 
       if (showAccessRemovalWarning) {
-        // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.router.navigate(["sm", this.organizationId, "projects"]);
+        await this.router.navigate(["sm", this.organizationId, "projects"]);
       }
       this.platformUtilsService.showToast(
         "success",
@@ -139,6 +138,7 @@ export class ProjectPeopleComponent implements OnInit, OnDestroy {
       this.validationService.showError(e);
       this.setSelected(this.currentAccessPolicies);
     }
+    this.formGroup.enable();
   };
 
   private setSelected(policiesToSelect: ApItemViewType[]) {

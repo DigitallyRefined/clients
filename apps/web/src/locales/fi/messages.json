@@ -581,8 +581,14 @@
   "accessLevel": {
     "message": "Käyttöoikeustaso"
   },
+  "accessing": {
+    "message": "Avataan"
+  },
   "loggedOut": {
     "message": "Kirjauduttu ulos"
+  },
+  "loggedOutDesc": {
+    "message": "Sinut on kirjattu ulos tililtäsi."
   },
   "loginExpired": {
     "message": "Kirjautumisistuntosi on erääntynyt."
@@ -648,10 +654,10 @@
     "message": "Pidä tämä ikkuna avoinna ja seuraa selaimesi opasteita."
   },
   "errorCreatingPasskey": {
-    "message": "Virhe suojausavaimen luonnissa"
+    "message": "Virhe luotaessa suojausavainta"
   },
   "errorCreatingPasskeyInfo": {
-    "message": "Suojausavaimesi luonnissa kohdattiin ongelma."
+    "message": "Suojausavaintasi luotaessa kohdattiin ongelma."
   },
   "passkeySuccessfullyCreated": {
     "message": "Suojausavain on luotu"
@@ -1047,6 +1053,12 @@
   "copyUuid": {
     "message": "Kopioi UUID"
   },
+  "errorRefreshingAccessToken": {
+    "message": "Access Token Refresh Error"
+  },
+  "errorRefreshingAccessTokenDesc": {
+    "message": "No refresh token or API keys found. Please try logging out and logging back in."
+  },
   "warning": {
     "message": "Varoitus"
   },
@@ -1340,6 +1352,9 @@
   },
   "accountDeletedDesc": {
     "message": "Tilisi on suljettu ja kaikki siihen liittyvät tiedot on poistettu."
+  },
+  "deleteOrganizationWarning": {
+    "message": "Organisaation poisto on pysyvä toimenpide, eikä sen peruminen ole mahdollista."
   },
   "myAccount": {
     "message": "Oma tili"
@@ -1710,11 +1725,11 @@
   "twoFactorDuoDesc": {
     "message": "Syötä Bitwarden-sovelluksen tiedot Duo Security -tilisi hallintapaneelista."
   },
-  "twoFactorDuoIntegrationKey": {
-    "message": "Integration key"
+  "twoFactorDuoClientId": {
+    "message": "Client ID"
   },
-  "twoFactorDuoSecretKey": {
-    "message": "Secret key"
+  "twoFactorDuoClientSecret": {
+    "message": "Client Secret"
   },
   "twoFactorDuoApiHostname": {
     "message": "API hostname"
@@ -1809,12 +1824,16 @@
   "unsecuredWebsitesFound": {
     "message": "Suojaamattomia verkkosivustoja löytyi"
   },
-  "unsecuredWebsitesFoundDesc": {
-    "message": "Löysimme holvistasi $COUNT$ kohdetta suojaamattomilla URI-osoitteilla. Sinun tulisi muuttaa niiden URI suojattuun \"https://\" -muotoon, jos sivusto tukee sitä.",
+  "unsecuredWebsitesFoundReportDesc": {
+    "message": "Löysimme holv(e)istasi $COUNT$ kohdetta suojaamattomilla URI-osoitteilla. Nämä tulisi muuttaa suojattuun \"https://\" -muotoon, jos sivustot sen mahdollistavat.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1830,12 +1849,16 @@
   "inactive2faFound": {
     "message": "Löytyi kirjautumistietoja, joille ei ole määritetty kaksivaiheista kirjautumista"
   },
-  "inactive2faFoundDesc": {
-    "message": "Löysimme holvistasi $COUNT$ sivustoa, joita ei ehkä ole määritetty käyttämään kaksivaiheista kirjautumista (2fa.directory-sivuston mukaan). Suojataksesi nämä tilit paremmin, sinun tulisi määrittää niille kaksivaiheinen kirjautuminen.",
+  "inactive2faFoundReportDesc": {
+    "message": "Löysimme holv(e)istasi $COUNT$ sivustoa, joita ei ehkä ole määritetty käyttämään kaksivaiheista tunnistautumista (2fa.directory-sivuston mukaan). Nämä tilit tulisi suojata paremmin määrittämällä niille kaksivaiheinen tunnistautuminen.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1854,12 +1877,16 @@
   "exposedPasswordsFound": {
     "message": "Paljastuneita salasanoja löytyi"
   },
-  "exposedPasswordsFoundDesc": {
-    "message": "Löysimme holvistasi $COUNT$ kohdetta, jotka sisältävät tunnetuissa tietovuodoissa paljastuneita salasanoja. Näiden palveluiden salasanat tulisi vaihtaa.",
+  "exposedPasswordsFoundReportDesc": {
+    "message": "Löysimme holv(e)istasi $COUNT$ kohdetta, joiden salasanat ovat paljastuneet tunnetuissa tietovuodoissa. Nämä salasanat tulisi vaihtaa.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1887,12 +1914,16 @@
   "weakPasswordsFound": {
     "message": "Heikkoja salasanoja löytyi"
   },
-  "weakPasswordsFoundDesc": {
-    "message": "Löysimme holvistasi $COUNT$ kohdetta, joiden salasanat eivät ole vahvoja. Nämä tulisi korvata vahvemmilla salasanoilla.",
+  "weakPasswordsFoundReportDesc": {
+    "message": "Löysimme holv(e)istasi $COUNT$ kohdetta, joiden salasanat eivät ole vahvoja. Nämä tulisi korvata vahvemmilla salasanoilla.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1908,12 +1939,16 @@
   "reusedPasswordsFound": {
     "message": "Toistuvia salasanoja löytyi"
   },
-  "reusedPasswordsFoundDesc": {
-    "message": "Löysimme holvistasi $COUNT$ toistuvasti käytettyä salasanaa. Ne tulisi vaihtaa yksilöllisiksi.",
+  "reusedPasswordsFoundReportDesc": {
+    "message": "Löysimme holv(e)istasi $COUNT$ toistuvasti käytettyä salasanaa. Ne tulisi korvata yksilöllisillä salasanoilla.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -2079,7 +2114,7 @@
     "message": "Bitwarden Families -tilauksella."
   },
   "addons": {
-    "message": "Laajennukset"
+    "message": "Lisäykset"
   },
   "premiumAccess": {
     "message": "Premium-käyttöoikeudet"
@@ -2768,6 +2803,12 @@
   "all": {
     "message": "Kaikki"
   },
+  "addAccess": {
+    "message": "Lisää käyttöoikeus"
+  },
+  "addAccessFilter": {
+    "message": "Lisää käyttöoikeussuodatin"
+  },
   "refresh": {
     "message": "Päivitä"
   },
@@ -3215,6 +3256,27 @@
   "device": {
     "message": "Laite"
   },
+  "creatingAccountOn": {
+    "message": "Luodaan tili palvelimelle"
+  },
+  "checkYourEmail": {
+    "message": "Tarkasta sähköpostisi"
+  },
+  "followTheLinkInTheEmailSentTo": {
+    "message": "Seuraa viestin linkkiä, joka lähetettiin sähköpostitse osoitteeseen"
+  },
+  "andContinueCreatingYourAccount": {
+    "message": "ja jatka tilin luontia."
+  },
+  "noEmail": {
+    "message": "Etkö saanut viestiä?"
+  },
+  "goBack": {
+    "message": "Palaa takaisin"
+  },
+  "toEditYourEmailAddress": {
+    "message": "muokataksesi sähköpostiosoitettasi."
+  },
   "view": {
     "message": "Näytä"
   },
@@ -3361,6 +3423,9 @@
   },
   "deleteRecoverConfirmDesc": {
     "message": "Olet pyytänyt Bitwarden-tilisi poistoa. Vahvista alla olevalla painikeella."
+  },
+  "deleteRecoverOrgConfirmDesc": {
+    "message": "Olet pyytänyt Bitwarden-organisaatiosi poistoa."
   },
   "myOrganization": {
     "message": "Oma organisaatio"
@@ -3538,6 +3603,12 @@
   },
   "subscriptionUserSeatsUnlimitedAutoscale": {
     "message": "Tilausmuutokset aiheuttavat suhteutettuja laskutusmuutoksia. Jos hiljattain kutsuttujen jäsenten määrä ylittää tilauksesi jäsenpaikkojen määrän, veloitetaan suhteutettu hinta uusista jäsenistä välittömästi."
+  },
+  "smStandaloneTrialSeatCountUpdateMessageFragment1": {
+    "message": "Lisää käyttäjäpaikkoja"
+  },
+  "smStandaloneTrialSeatCountUpdateMessageFragment2": {
+    "message": "ottamalla yhteyttä osoitteella"
   },
   "subscriptionUserSeatsLimitedAutoscale": {
     "message": "Tilausmuutokset aiheuttavat suhteutettuja laskutusmuutoksia. Jos hiljattain kutsuttujen jäsenten määrä ylittää tilauksesi jäsenpaikkojen määrän, veloitetaan suhteutettu hinta uusista jäsenistä välittömästi, kunnes $MAX$ paikan enimmäismäärä täyttyy.",
@@ -5524,6 +5595,39 @@
   "rotateBillingSyncTokenTitle": {
     "message": "Laskutuksen synkronointitunnisteen uudistus mitätöi edellisen tunnisteen."
   },
+  "selfHostedServer": {
+    "message": "itse ylläpidetty"
+  },
+  "customEnvironment": {
+    "message": "Custom environment"
+  },
+  "selfHostedBaseUrlHint": {
+    "message": "Specify the base URL of your on-premises hosted Bitwarden installation. Example: https://bitwarden.company.com"
+  },
+  "selfHostedCustomEnvHeader": {
+    "message": "For advanced configuration, you can specify the base URL of each service independently."
+  },
+  "selfHostedEnvFormInvalid": {
+    "message": "You must add either the base Server URL or at least one custom environment."
+  },
+  "apiUrl": {
+    "message": "API-palvelimen URL"
+  },
+  "webVaultUrl": {
+    "message": "Verkkoholvipalvelimen URL"
+  },
+  "identityUrl": {
+    "message": "Henkilöllisyyspalvelimen URL"
+  },
+  "notificationsUrl": {
+    "message": "Ilmoituspalvelimen URL"
+  },
+  "iconsUrl": {
+    "message": "Kuvakepalvelimen URL"
+  },
+  "environmentSaved": {
+    "message": "Palvelinympäristön URL-osoitteet tallennettiin"
+  },
   "selfHostingTitle": {
     "message": "Itse ylläpidetty"
   },
@@ -5781,6 +5885,108 @@
   },
   "forwardedEmailDesc": {
     "message": "Luo sähköpostialias ulkoisella ohjauspalvelulla."
+  },
+  "forwarderError": {
+    "message": "$SERVICENAME$ -virhe: $ERRORMESSAGE$",
+    "description": "Reports an error returned by a forwarding service to the user.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      },
+      "errormessage": {
+        "content": "$2",
+        "example": "Invalid characters in domain name."
+      }
+    }
+  },
+  "forwarderGeneratedBy": {
+    "message": "Bitwardenin luoma.",
+    "description": "Displayed with the address on the forwarding service's configuration screen."
+  },
+  "forwarderGeneratedByWithWebsite": {
+    "message": "Verkkosivusto: $WEBSITE$. Bitwardenin luoma.",
+    "description": "Displayed with the address on the forwarding service's configuration screen.",
+    "placeholders": {
+      "WEBSITE": {
+        "content": "$1",
+        "example": "www.example.com"
+      }
+    }
+  },
+  "forwaderInvalidToken": {
+    "message": "Virheellinen $SERVICENAME$ -rajapinnan tunniste",
+    "description": "Displayed when the user's API token is empty or rejected by the forwarding service.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwaderInvalidTokenWithMessage": {
+    "message": "Virheellinen $SERVICENAME$ -rajapinnan tunniste: $ERRORMESSAGE$",
+    "description": "Displayed when the user's API token is rejected by the forwarding service with an error message.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      },
+      "errormessage": {
+        "content": "$2",
+        "example": "Please verify your email address to continue."
+      }
+    }
+  },
+  "forwarderNoAccountId": {
+    "message": "$SERVICENAME$ -palvelun peittämän sähköpostitilin tunnistetta ei saatu.",
+    "description": "Displayed when the forwarding service fails to return an account ID.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderNoDomain": {
+    "message": "Virheellinen $SERVICENAME$ -verkkotunnus.",
+    "description": "Displayed when the domain is empty or domain authorization failed at the forwarding service.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderNoUrl": {
+    "message": "Virheellinen $SERVICENAME$ -URL.",
+    "description": "Displayed when the url of the forwarding service wasn't supplied.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderUnknownError": {
+    "message": "Tapahtui tuntematon $SERVICENAME$ -virhe.",
+    "description": "Displayed when the forwarding service failed due to an unknown error.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderUnknownForwarder": {
+    "message": "Tuntematon ohjaaja: $SERVICENAME$.",
+    "description": "Displayed when the forwarding service is not supported.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "JustTrust.us"
+      }
+    }
   },
   "hostname": {
     "message": "Isäntä",
@@ -6460,6 +6666,9 @@
   "editGroupCollectionsDesc": {
     "message": "Myönnä käyttöoikeudet kokoelmiin lisäämällä heidät tähän ryhmään."
   },
+  "restrictedCollectionAssignmentDesc": {
+    "message": "Voit määrittää vain hallitsemiasi kokoelmia."
+  },
   "accessAllCollectionsDesc": {
     "message": "Myönnä käyttöoikeudet kaikkiin nykyisiin ja tuleviin kokoelmiin"
   },
@@ -6691,8 +6900,8 @@
   "selectGroups": {
     "message": "Valitse ryhmät"
   },
-  "userPermissionOverrideHelper": {
-    "message": "Jäsenkohtaisesti määritetyt käyttöoikeudet korvaavat kyseisen jäsenen ryhmän määrittämät oikeudet"
+  "userPermissionOverrideHelperDesc": {
+    "message": "Jäsenkohtaisesti määritetyt käyttöoikeudet korvaavat jäsenen ryhmän määrittämät oikeudet."
   },
   "noMembersOrGroupsAdded": {
     "message": "Jäseniä tai ryhmiä ei ole lisätty."
@@ -6883,8 +7092,8 @@
   "updateLowKdfIterationsDesc": {
     "message": "Päivitä salausasetuksesi uusien suojaussuositusten mukaisiksi ja vahvista tilisi suojausta."
   },
-  "changeKdfLoggedOutWarning": {
-    "message": "Jos jatkat, kirjataan kaikki aktiiviset istunnot ulos, jonka jälkeen sinun on kirjauduttava sisään uudelleen ja suoritettava kaksivaiheisen todennuksen määritys. Tietojesi säilyvyyden varmistamiseksi suosittelemme, että viet holvisi sisällön ennen kuin muutat salausasetuksiasi."
+  "kdfSettingsChangeLogoutWarning": {
+    "message": "Jos jatkat, kaikki aktiiviset istunnot kirjataan ulos. Sinun on kirjauduttava sisään uudelleen ja suoritettava kaksivaiheisen todennuksen määritys. Tietojesi säilyvyyden varmistamiseksi suosittelemme, että viet holvisi sisällön, ennen kuin muutat salausasetuksiasi."
   },
   "secretsManager": {
     "message": "Salaisuushallinta"
@@ -7504,6 +7713,12 @@
   "readOnlyCollectionAccess": {
     "message": "Oikeutesi eivät riitä kokoelman hallintaan."
   },
+  "grantAddAccessCollectionWarningTitle": {
+    "message": "Puuttuvat \"Voi hallita\" -käyttöoikeudet"
+  },
+  "grantAddAccessCollectionWarning": {
+    "message": "Myönnä ”Voi hallita” -oikeudet, jotka mahdollistavat kokoelman täydellisen hallinnan, mukaanlukien sen poistamisen."
+  },
   "grantCollectionAccess": {
     "message": "Myönnä ryhmille tai henkilöille kokoelman käyttöoikeus."
   },
@@ -7534,13 +7749,6 @@
     "message": "lisää maksutapa",
     "description": "This will be used as part of a larger sentence, broken up to include links. The full sentence will read 'To maintain your subscription for $ORG$, add a payment method.'"
   },
-  "collectionEnhancementsDesc": {
-    "message": "Paranna joustavuutta lisäämällä uusia asetuksia ja käyttöoikeuksia. Korvaa \"Valvoja\"-rooli \"Voi hallita\" -käyttöoikeudella ja aktivoi ominaisuuksia, joilla käyttäjät voivat luoda kokoelmia ja rajoittaa kokoelmien hallintaoikeuksia.",
-    "description": "This describes new features and improvements for user roles and collections"
-  },
-  "collectionEnhancementsLearnMore": {
-    "message": "Lisätietoja kokoelmien hallinnasta"
-  },
   "organizationInformation": {
     "message": "Organisaation tiedot"
   },
@@ -7552,12 +7760,6 @@
   },
   "smFreeTrialConfirmationEmail": {
     "message": "Sähköpostivahvistus lähetettiin osoitteeseen "
-  },
-  "confirmCollectionEnhancementsDialogTitle": {
-    "message": "Toimintoa ei ole mahdollista kumota"
-  },
-  "confirmCollectionEnhancementsDialogContent": {
-    "message": "Ominaisuuden käyttöönotto korvaa \"Valvoja\"-roolin \"Voi hallita\" -käyttöoikeudella. Muutos kestää hetken ja ennen sen valmistumista organisaatioon ei tule tehdä mitään muutoksia. Haluatko varmasti jatkaa?"
   },
   "sorryToSeeYouGo": {
     "message": "Harmillista, että päätit lopettaa tilauksesi! Auta meitä parantamaan Bitwardenia kertomalla miksi.",
@@ -7609,13 +7811,10 @@
   "success": {
     "message": "Onnistui"
   },
-  "viewCollection": {
-    "message": "Näytä kokoelma"
-  },
   "restrictedGroupAccess": {
     "message": "Et voi lisätä itseäsi ryhmiin."
   },
-  "restrictedCollectionAccess": {
+  "cannotAddYourselfToCollections": {
     "message": "Et voi lisätä itseäsi kokoelmiin."
   },
   "assign": {
@@ -7938,8 +8137,8 @@
       }
     }
   },
-  "deleteProviderWarningDesc": {
-    "message": "Kaikki liitetyt asiakkaat on poistettava ennen toimittajan $ID$ poistoa.",
+  "deleteProviderWarningDescription": {
+    "message": "Kaikki pääteliitokset on poistettava ennen toimittajan $ID$ poistoa.",
     "placeholders": {
       "id": {
         "content": "$1",
@@ -8049,5 +8248,111 @@
   },
   "collectionItemSelect": {
     "message": "Valitse kokoelman kohde"
+  },
+  "manageBillingFromProviderPortalMessage": {
+    "message": "Hallitse laskutusta Toimittajaportaaliista"
+  },
+  "viewItemsIn": {
+    "message": "Näytä kohteen $NAME$ kohteet",
+    "description": "Button to view the contents of a folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "backTo": {
+    "message": "Palaa kohteeseen $NAME$",
+    "description": "Navigate back to a previous folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "back": {
+    "message": "Takaisin",
+    "description": "Button text to navigate back"
+  },
+  "removeItem": {
+    "message": "Poista $NAME$",
+    "description": "Remove a selected option, such as a folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "viewInfo": {
+    "message": "Tarkastele tietoja"
+  },
+  "viewAccess": {
+    "message": "Tarkastele oikeuksia"
+  },
+  "noCollectionsSelected": {
+    "message": "Et ole valinnut yhtään kokoelmaa."
+  },
+  "updateName": {
+    "message": "Päivitä nimi"
+  },
+  "updatedOrganizationName": {
+    "message": "Päivitetty organisaation nimi"
+  },
+  "providerPlan": {
+    "message": "Hallittu palvelutoimittaja"
+  },
+  "orgSeats": {
+    "message": "Organisaation käyttäjäpaikat"
+  },
+  "providerDiscount": {
+    "message": "$AMOUNT$ % alennus",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "lowKDFIterationsBanner": {
+    "message": "Alhainen KDF-toistojen määrä. Paranna tilisi suojausta korottamalla määrää."
+  },
+  "changeKDFSettings": {
+    "message": "Muuta KDF-asetuksia"
+  },
+  "secureYourInfrastructure": {
+    "message": "Suojaa infrastruktuurisi"
+  },
+  "protectYourFamilyOrBusiness": {
+    "message": "Suojaa perheesi tai yrityksesi"
+  },
+  "upgradeOrganizationCloseSecurityGaps": {
+    "message": "Sulje suojauksesi aukkoja valvontaraporttien avulla"
+  },
+  "upgradeOrganizationCloseSecurityGapsDesc": {
+    "message": "Pysy haavoittuvuuksien edellä tehostamalla valvontaa päivittämällä maksulliseen tilaukseeen."
+  },
+  "approveAllRequests": {
+    "message": "Hyväksy kaikki pyynnöt"
+  },
+  "allLoginRequestsApproved": {
+    "message": "Kaikki kirjautumispyynnöt hyväksyttiin"
+  },
+  "payPal": {
+    "message": "PayPal"
+  },
+  "bitcoin": {
+    "message": "Bitcoin"
+  },
+  "updatedTaxInformation": {
+    "message": "Päivitetyt verotiedot"
+  },
+  "unverified": {
+    "message": "Vahvistamaton"
+  },
+  "verified": {
+    "message": "Vahvistettu"
   }
 }

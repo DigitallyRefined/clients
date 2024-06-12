@@ -2,7 +2,9 @@ import { Component, OnInit } from "@angular/core";
 
 import { ModalService } from "@bitwarden/angular/services/modal.service";
 import { OrganizationService } from "@bitwarden/common/admin-console/abstractions/organization/organization.service.abstraction";
+import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
 import { CipherService } from "@bitwarden/common/vault/abstractions/cipher.service";
+import { SyncService } from "@bitwarden/common/vault/abstractions/sync/sync.service.abstraction";
 import { CipherType } from "@bitwarden/common/vault/enums";
 import { CipherView } from "@bitwarden/common/vault/models/view/cipher.view";
 import { PasswordRepromptService } from "@bitwarden/vault";
@@ -22,8 +24,17 @@ export class ReusedPasswordsReportComponent extends CipherReportComponent implem
     protected organizationService: OrganizationService,
     modalService: ModalService,
     passwordRepromptService: PasswordRepromptService,
+    i18nService: I18nService,
+    syncService: SyncService,
   ) {
-    super(modalService, passwordRepromptService, organizationService);
+    super(
+      cipherService,
+      modalService,
+      passwordRepromptService,
+      organizationService,
+      i18nService,
+      syncService,
+    );
   }
 
   async ngOnInit() {
@@ -34,6 +45,8 @@ export class ReusedPasswordsReportComponent extends CipherReportComponent implem
     const allCiphers = await this.getAllCiphers();
     const ciphersWithPasswords: CipherView[] = [];
     this.passwordUseMap = new Map<string, number>();
+    this.filterStatus = [0];
+
     allCiphers.forEach((ciph) => {
       const { type, login, isDeleted, edit, viewPassword } = ciph;
       if (
@@ -46,6 +59,7 @@ export class ReusedPasswordsReportComponent extends CipherReportComponent implem
       ) {
         return;
       }
+
       ciphersWithPasswords.push(ciph);
       if (this.passwordUseMap.has(login.password)) {
         this.passwordUseMap.set(login.password, this.passwordUseMap.get(login.password) + 1);
@@ -57,11 +71,8 @@ export class ReusedPasswordsReportComponent extends CipherReportComponent implem
       (c) =>
         this.passwordUseMap.has(c.login.password) && this.passwordUseMap.get(c.login.password) > 1,
     );
-    this.ciphers = reusedPasswordCiphers;
-  }
 
-  protected getAllCiphers(): Promise<CipherView[]> {
-    return this.cipherService.getAllDecrypted();
+    this.filterCiphersByOrg(reusedPasswordCiphers);
   }
 
   protected canManageCipher(c: CipherView): boolean {

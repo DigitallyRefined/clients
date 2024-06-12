@@ -176,21 +176,21 @@ export class BrowserApi {
     return BrowserApi.tabSendMessage(tab, obj);
   }
 
-  static async tabSendMessage<T>(
+  static async tabSendMessage<T, TResponse = unknown>(
     tab: chrome.tabs.Tab,
     obj: T,
     options: chrome.tabs.MessageSendOptions = null,
-  ): Promise<void> {
+  ): Promise<TResponse> {
     if (!tab || !tab.id) {
       return;
     }
 
-    return new Promise<void>((resolve) => {
-      chrome.tabs.sendMessage(tab.id, obj, options, () => {
+    return new Promise<TResponse>((resolve) => {
+      chrome.tabs.sendMessage(tab.id, obj, options, (response) => {
         if (chrome.runtime.lastError) {
           // Some error happened
         }
-        resolve();
+        resolve(response);
       });
     });
   }
@@ -202,10 +202,6 @@ export class BrowserApi {
     responseCallback?: (response: T) => void,
   ) {
     chrome.tabs.sendMessage<TabMessage, T>(tabId, message, options, responseCallback);
-  }
-
-  static async getPrivateModeWindows(): Promise<browser.windows.Window[]> {
-    return (await browser.windows.getAll()).filter((win) => win.incognito);
   }
 
   static async onWindowCreated(callback: (win: chrome.windows.Window) => any) {
@@ -238,10 +234,6 @@ export class BrowserApi {
     return typeof window !== "undefined" && window === BrowserApi.getBackgroundPage();
   }
 
-  static getApplicationVersion(): string {
-    return chrome.runtime.getManifest().version;
-  }
-
   /**
    * Gets the extension views that match the given properties. This method is not
    * available within background service worker. As a result, it will return an
@@ -269,6 +261,28 @@ export class BrowserApi {
     return new Promise((resolve) =>
       chrome.tabs.create({ url: url, active: active }, (tab) => resolve(tab)),
     );
+  }
+
+  /**
+   * Gathers the details for a specified sub-frame of a tab.
+   *
+   * @param details - The details of the frame to get.
+   */
+  static async getFrameDetails(
+    details: chrome.webNavigation.GetFrameDetails,
+  ): Promise<chrome.webNavigation.GetFrameResultDetails> {
+    return new Promise((resolve) => chrome.webNavigation.getFrame(details, resolve));
+  }
+
+  /**
+   * Gets all frames associated with a tab.
+   *
+   * @param tabId - The id of the tab to get the frames for.
+   */
+  static async getAllFrameDetails(
+    tabId: chrome.tabs.Tab["id"],
+  ): Promise<chrome.webNavigation.GetAllFrameResultDetails[]> {
+    return new Promise((resolve) => chrome.webNavigation.getAllFrames({ tabId }, resolve));
   }
 
   // Keep track of all the events registered in a Safari popup so we can remove
@@ -564,34 +578,6 @@ export class BrowserApi {
     chrome.privacy.services.autofillAddressEnabled.set({ value });
     chrome.privacy.services.autofillCreditCardEnabled.set({ value });
     chrome.privacy.services.passwordSavingEnabled.set({ value });
-  }
-
-  /**
-   * Opens the offscreen document with the given reasons and justification.
-   *
-   * @param reasons - List of reasons for opening the offscreen document.
-   * @see https://developer.chrome.com/docs/extensions/reference/api/offscreen#type-Reason
-   * @param justification - Custom written justification for opening the offscreen document.
-   */
-  static async createOffscreenDocument(reasons: chrome.offscreen.Reason[], justification: string) {
-    await chrome.offscreen.createDocument({
-      url: "offscreen-document/index.html",
-      reasons,
-      justification,
-    });
-  }
-
-  /**
-   * Closes the offscreen document.
-   *
-   * @param callback - Optional callback to execute after the offscreen document is closed.
-   */
-  static closeOffscreenDocument(callback?: () => void) {
-    chrome.offscreen.closeDocument(() => {
-      if (callback) {
-        callback();
-      }
-    });
   }
 
   /**

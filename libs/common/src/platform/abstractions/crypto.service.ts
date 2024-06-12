@@ -4,16 +4,43 @@ import { ProfileOrganizationResponse } from "../../admin-console/models/response
 import { ProfileProviderOrganizationResponse } from "../../admin-console/models/response/profile-provider-organization.response";
 import { ProfileProviderResponse } from "../../admin-console/models/response/profile-provider.response";
 import { KdfConfig } from "../../auth/models/domain/kdf-config";
-import { OrganizationId, ProviderId, UserId } from "../../types/guid";
-import { UserKey, MasterKey, OrgKey, ProviderKey, PinKey, CipherKey } from "../../types/key";
+import { OrganizationId, UserId } from "../../types/guid";
+import {
+  UserKey,
+  MasterKey,
+  OrgKey,
+  ProviderKey,
+  CipherKey,
+  UserPrivateKey,
+  UserPublicKey,
+} from "../../types/key";
 import { KeySuffixOptions, HashPurpose } from "../enums";
 import { EncArrayBuffer } from "../models/domain/enc-array-buffer";
 import { EncString } from "../models/domain/enc-string";
 import { SymmetricCryptoKey } from "../models/domain/symmetric-crypto-key";
 
-export abstract class CryptoService {
-  abstract activeUserKey$: Observable<UserKey>;
+/**
+ * An object containing all the users key needed to decrypt a users personal and organization vaults.
+ */
+export type CipherDecryptionKeys = {
+  /**
+   * A users {@link UserKey} that is useful for decrypted ciphers in the users personal vault.
+   */
+  userKey: UserKey;
 
+  /**
+   * A users decrypted organization keys.
+   */
+  orgKeys: Record<OrganizationId, OrgKey>;
+};
+
+export abstract class CryptoService {
+  /**
+   * Retrieves a stream of the given users {@see UserKey} values. Can emit null if the user does not have a user key, e.g. the user
+   * is in a locked or logged out state.
+   * @param userId The user id of the user to get the {@see UserKey} for.
+   */
+  abstract userKey$(userId: UserId): Observable<UserKey>;
   /**
    * Returns the an observable key for the given user id.
    *
@@ -46,6 +73,8 @@ export abstract class CryptoService {
    * Retrieves the user key
    * @param userId The desired user
    * @returns The user key
+   *
+   * @deprecated Use {@link userKey$} with a required {@link UserId} instead.
    */
   abstract getUserKey(userId?: string): Promise<UserKey>;
 
@@ -54,13 +83,23 @@ export abstract class CryptoService {
    * for encryption of data instead of the user key.
    */
   abstract isLegacyUser(masterKey?: MasterKey, userId?: string): Promise<boolean>;
+
+  /**
+   * Use for encryption/decryption of data in order to support legacy
+   * encryption models. It will return the user key if available,
+   * if not it will return the master key.
+   *
+   * @deprecated Please provide the userId of the user you want the user key for.
+   */
+  abstract getUserKeyWithLegacySupport(): Promise<UserKey>;
+
   /**
    * Use for encryption/decryption of data in order to support legacy
    * encryption models. It will return the user key if available,
    * if not it will return the master key.
    * @param userId The desired user
    */
-  abstract getUserKeyWithLegacySupport(userId?: string): Promise<UserKey>;
+  abstract getUserKeyWithLegacySupport(userId: UserId): Promise<UserKey>;
   /**
    * Retrieves the user key from storage
    * @param keySuffix The desired version of the user's key to retrieve
@@ -130,18 +169,6 @@ export abstract class CryptoService {
     userKey?: UserKey,
   ): Promise<[UserKey, EncString]>;
   /**
-   * Decrypts the user key with the provided master key
-   * @param masterKey The user's master key
-   * @param userKey The user's encrypted symmetric key
-   * @param userId The desired user
-   * @returns The user key
-   */
-  abstract decryptUserKeyWithMasterKey(
-    masterKey: MasterKey,
-    userKey?: EncString,
-    userId?: string,
-  ): Promise<UserKey>;
-  /**
    * Creates a master password hash from the user's master password. Can
    * be used for local authentication or for server authentication depending
    * on the hashPurpose provided.
@@ -169,24 +196,27 @@ export abstract class CryptoService {
    * organization keys currently in memory
    * @param orgs The organizations to set keys for
    * @param providerOrgs The provider organizations to set keys for
+   * @param userId The user id of the user to set the org keys for
    */
   abstract setOrgKeys(
     orgs: ProfileOrganizationResponse[],
     providerOrgs: ProfileProviderOrganizationResponse[],
+    userId: UserId,
   ): Promise<void>;
+  /**
+   * Retrieves a stream of the active users organization keys,
+   * will NOT emit any value if there is no active user.
+   *
+   * @deprecated Use {@link orgKeys$} with a required {@link UserId} instead.
+   */
   abstract activeUserOrgKeys$: Observable<Record<OrganizationId, OrgKey>>;
   /**
    * Returns the organization's symmetric key
-   * @deprecated Use the observable activeUserOrgKeys$ and `map` to the desired orgKey instead
+   * @deprecated Use the observable userOrgKeys$ and `map` to the desired {@link OrgKey} instead
    * @param orgId The desired organization
    * @returns The organization's symmetric key
    */
   abstract getOrgKey(orgId: string): Promise<OrgKey>;
-  /**
-   * @deprecated Use the observable activeUserOrgKeys$ instead
-   * @returns A record of the organization Ids to their symmetric keys
-   */
-  abstract getOrgKeys(): Promise<Record<string, SymmetricCryptoKey>>;
   /**
    * Uses the org key to derive a new symmetric key for encrypting data
    * @param orgKey The organization's symmetric key
@@ -194,28 +224,18 @@ export abstract class CryptoService {
   abstract makeDataEncKey<T extends UserKey | OrgKey>(
     key: T,
   ): Promise<[SymmetricCryptoKey, EncString]>;
+
   /**
-   * Stores the encrypted provider keys and clears any decrypted
-   * provider keys currently in memory
-   * @param providers The providers to set keys for
+   * Stores the provider keys for a given user.
+   * @param orgs The provider orgs for which to save the keys from.
+   * @param userId The user id of the user for which to store the keys for.
    */
-  abstract activeUserProviderKeys$: Observable<Record<ProviderId, ProviderKey>>;
-  abstract setProviderKeys(orgs: ProfileProviderResponse[]): Promise<void>;
+  abstract setProviderKeys(orgs: ProfileProviderResponse[], userId: UserId): Promise<void>;
   /**
    * @param providerId The desired provider
    * @returns The provider's symmetric key
    */
   abstract getProviderKey(providerId: string): Promise<ProviderKey>;
-  /**
-   * @returns A record of the provider Ids to their symmetric keys
-   */
-  abstract getProviderKeys(): Promise<Record<ProviderId, ProviderKey>>;
-  /**
-   * Returns the public key from memory. If not available, extracts it
-   * from the private key and stores it in memory
-   * @returns The user's public key
-   */
-  abstract getPublicKey(): Promise<Uint8Array>;
   /**
    * Creates a new organization key and encrypts it with the user's public key.
    * This method can also return Provider keys for creating new Provider users.
@@ -223,18 +243,32 @@ export abstract class CryptoService {
    */
   abstract makeOrgKey<T extends OrgKey | ProviderKey>(): Promise<[EncString, T]>;
   /**
-   * Sets the the user's encrypted private key in storage and
+   * Sets the user's encrypted private key in storage and
    * clears the decrypted private key from memory
    * Note: does not clear the private key if null is provided
    * @param encPrivateKey An encrypted private key
    */
-  abstract setPrivateKey(encPrivateKey: string): Promise<void>;
+  abstract setPrivateKey(encPrivateKey: string, userId: UserId): Promise<void>;
   /**
    * Returns the private key from memory. If not available, decrypts it
    * from storage and stores it in memory
    * @returns The user's private key
+   *
+   * @throws An error if there is no user currently active.
+   *
+   * @deprecated Use {@link userPrivateKey$} instead.
    */
   abstract getPrivateKey(): Promise<Uint8Array>;
+
+  /**
+   * Gets an observable stream of the given users decrypted private key, will emit null if the user
+   * doesn't have a UserKey to decrypt the encrypted private key or null if the user doesn't have an
+   * encrypted private key at all.
+   *
+   * @param userId The user id of the user to get the data for.
+   */
+  abstract userPrivateKey$(userId: UserId): Observable<UserPrivateKey>;
+
   /**
    * Generates a fingerprint phrase for the user based on their public key
    * @param fingerprintMaterial Fingerprint material
@@ -247,15 +281,9 @@ export abstract class CryptoService {
    * @param key A key to encrypt the private key with. If not provided,
    * defaults to the user key
    * @returns A new keypair: [publicKey in Base64, encrypted privateKey]
+   * @throws If the provided key is a null-ish value.
    */
-  abstract makeKeyPair(key?: SymmetricCryptoKey): Promise<[string, EncString]>;
-  /**
-   * @param pin The user's pin
-   * @param salt The user's salt
-   * @param kdfConfig The user's kdf config
-   * @returns A key derived from the user's pin
-   */
-  abstract makePinKey(pin: string, salt: string, kdfConfig: KdfConfig): Promise<PinKey>;
+  abstract makeKeyPair(key: SymmetricCryptoKey): Promise<[string, EncString]>;
   /**
    * Clears the user's pin keys from storage
    * Note: This will remove the stored pin and as a result,
@@ -263,43 +291,6 @@ export abstract class CryptoService {
    * @param userId The desired user
    */
   abstract clearPinKeys(userId?: string): Promise<void>;
-  /**
-   * Decrypts the user key with their pin
-   * @param pin The user's PIN
-   * @param salt The user's salt
-   * @param kdfConfig The user's KDF config
-   * @param pinProtectedUserKey The user's PIN protected symmetric key, if not provided
-   * it will be retrieved from storage
-   * @returns The decrypted user key
-   */
-  abstract decryptUserKeyWithPin(
-    pin: string,
-    salt: string,
-    kdfConfig: KdfConfig,
-    protectedKeyCs?: EncString,
-  ): Promise<UserKey>;
-  /**
-   * Creates a new Pin key that encrypts the user key instead of the
-   * master key. Clears the old Pin key from state.
-   * @param masterPasswordOnRestart True if Master Password on Restart is enabled
-   * @param pin User's PIN
-   * @param email User's email
-   * @param kdfConfig User's KdfConfig
-   * @param oldPinKey The old Pin key from state (retrieved from different
-   * places depending on if Master Password on Restart was enabled)
-   * @returns The user key
-   */
-  abstract decryptAndMigrateOldPinKey(
-    masterPasswordOnRestart: boolean,
-    pin: string,
-    email: string,
-    kdfConfig: KdfConfig,
-    oldPinKey: EncString,
-  ): Promise<UserKey>;
-  /**
-   * Replaces old master auto keys with new user auto keys
-   */
-  abstract migrateAutoKeyIfNeeded(userId?: string): Promise<void>;
   /**
    * @param keyMaterial The key material to derive the send key from
    * @returns A new send key
@@ -315,15 +306,17 @@ export abstract class CryptoService {
    * @param data The data to encrypt
    * @param publicKey The public key to use for encryption, if not provided, the user's public key will be used
    * @returns The encrypted data
+   * @throws If the given publicKey is a null-ish value.
    */
-  abstract rsaEncrypt(data: Uint8Array, publicKey?: Uint8Array): Promise<EncString>;
+  abstract rsaEncrypt(data: Uint8Array, publicKey: Uint8Array): Promise<EncString>;
   /**
    * Decrypts a value using RSA.
    * @param encValue The encrypted value to decrypt
-   * @param privateKeyValue The private key to use for decryption
+   * @param privateKey The private key to use for decryption
    * @returns The decrypted value
+   * @throws If the given privateKey is a null-ish value.
    */
-  abstract rsaDecrypt(encValue: string, privateKeyValue?: Uint8Array): Promise<Uint8Array>;
+  abstract rsaDecrypt(encValue: string, privateKey: Uint8Array): Promise<Uint8Array>;
   abstract randomNumber(min: number, max: number): Promise<number>;
   /**
    * Generates a new cipher key
@@ -335,22 +328,14 @@ export abstract class CryptoService {
    * Initialize all necessary crypto keys needed for a new account.
    * Warning! This completely replaces any existing keys!
    * @returns The user's newly created  public key, private key, and encrypted private key
+   *
+   * @throws An error if there is no user currently active.
    */
   abstract initAccount(): Promise<{
     userKey: UserKey;
     publicKey: string;
     privateKey: EncString;
   }>;
-
-  /**
-   * @deprecated Left for migration purposes. Use decryptUserKeyWithPin instead.
-   */
-  abstract decryptMasterKeyWithPin(
-    pin: string,
-    salt: string,
-    kdfConfig: KdfConfig,
-    protectedKeyCs?: EncString,
-  ): Promise<MasterKey>;
   /**
    * Previously, the master key was used for any additional key like the biometrics or pin key.
    * We have switched to using the user key for these purposes. This method is for clearing the state
@@ -390,4 +375,38 @@ export abstract class CryptoService {
     encBuffer: EncArrayBuffer,
     key: SymmetricCryptoKey,
   ): Promise<Uint8Array>;
+
+  /**
+   * Retrieves all the keys needed for decrypting Ciphers
+   * @param userId The user id of the keys to retrieve or null if the user is not Unlocked
+   * @param legacySupport `true` if you need to support retrieving the legacy version of the users key, `false` if
+   * you do not need legacy support. Use `true` by necessity only. Defaults to `false`. Legacy support is for users
+   * that may not have updated to use the new {@link UserKey} yet.
+   *
+   * @throws If an invalid user id is passed in.
+   */
+  abstract cipherDecryptionKeys$(
+    userId: UserId,
+    legacySupport?: boolean,
+  ): Observable<CipherDecryptionKeys | null>;
+
+  /**
+   * Gets an observable of org keys for the given user.
+   * @param userId The user id of the user of which to get the keys for.
+   * @return An observable stream of the users organization keys if they are unlocked, or null if the user is not unlocked.
+   * The observable will stay alive through locks/unlocks.
+   *
+   * @throws If an invalid user id is passed in.
+   */
+  abstract orgKeys$(userId: UserId): Observable<Record<OrganizationId, OrgKey> | null>;
+
+  /**
+   * Gets an observable stream of the users public key. If the user is does not have
+   * a {@link UserKey} or {@link UserPrivateKey} that is decryptable, this will emit null.
+   *
+   * @param userId The user id of the user of which to get the public key for.
+   *
+   * @throws If an invalid user id is passed in.
+   */
+  abstract userPublicKey$(userId: UserId): Observable<UserPublicKey>;
 }

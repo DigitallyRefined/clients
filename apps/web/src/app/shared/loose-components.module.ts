@@ -1,11 +1,15 @@
 import { NgModule } from "@angular/core";
 
-import { PasswordCalloutComponent } from "@bitwarden/auth/angular";
+import {
+  PasswordCalloutComponent,
+  UserVerificationFormInputComponent,
+} from "@bitwarden/auth/angular";
 import { LayoutComponent, NavigationModule } from "@bitwarden/components";
 
 import { OrganizationLayoutComponent } from "../admin-console/organizations/layouts/organization-layout.component";
 import { EventsComponent as OrgEventsComponent } from "../admin-console/organizations/manage/events.component";
 import { UserConfirmComponent as OrgUserConfirmComponent } from "../admin-console/organizations/manage/user-confirm.component";
+import { VerifyRecoverDeleteOrgComponent } from "../admin-console/organizations/manage/verify-recover-delete-org.component";
 import { AcceptFamilySponsorshipComponent } from "../admin-console/organizations/sponsorships/accept-family-sponsorship.component";
 import { ExposedPasswordsReportComponent as OrgExposedPasswordsReportComponent } from "../admin-console/organizations/tools/exposed-passwords-report.component";
 import { InactiveTwoFactorReportComponent as OrgInactiveTwoFactorReportComponent } from "../admin-console/organizations/tools/inactive-two-factor-report.component";
@@ -16,7 +20,6 @@ import { ProvidersComponent } from "../admin-console/providers/providers.compone
 import { VerifyRecoverDeleteProviderComponent } from "../admin-console/providers/verify-recover-delete-provider.component";
 import { SponsoredFamiliesComponent } from "../admin-console/settings/sponsored-families.component";
 import { SponsoringOrgRowComponent } from "../admin-console/settings/sponsoring-org-row.component";
-import { AcceptOrganizationComponent } from "../auth/accept-organization.component";
 import { HintComponent } from "../auth/hint.component";
 import { LockComponent } from "../auth/lock.component";
 import { RecoverDeleteComponent } from "../auth/recover-delete.component";
@@ -25,11 +28,11 @@ import { RegisterFormModule } from "../auth/register-form/register-form.module";
 import { RemovePasswordComponent } from "../auth/remove-password.component";
 import { SetPasswordComponent } from "../auth/set-password.component";
 import { AccountComponent } from "../auth/settings/account/account.component";
-import { ChangeAvatarComponent } from "../auth/settings/account/change-avatar.component";
+import { ChangeAvatarDialogComponent } from "../auth/settings/account/change-avatar-dialog.component";
 import { ChangeEmailComponent } from "../auth/settings/account/change-email.component";
 import { DangerZoneComponent } from "../auth/settings/account/danger-zone.component";
 import { DeauthorizeSessionsComponent } from "../auth/settings/account/deauthorize-sessions.component";
-import { DeleteAccountComponent } from "../auth/settings/account/delete-account.component";
+import { DeleteAccountDialogComponent } from "../auth/settings/account/delete-account-dialog.component";
 import { ProfileComponent } from "../auth/settings/account/profile.component";
 import { EmergencyAccessAttachmentsComponent } from "../auth/settings/emergency-access/attachments/emergency-access-attachments.component";
 import { EmergencyAccessConfirmComponent } from "../auth/settings/emergency-access/confirm/emergency-access-confirm.component";
@@ -50,7 +53,6 @@ import { TwoFactorSetupComponent } from "../auth/settings/two-factor-setup.compo
 import { TwoFactorVerifyComponent } from "../auth/settings/two-factor-verify.component";
 import { TwoFactorWebAuthnComponent } from "../auth/settings/two-factor-webauthn.component";
 import { TwoFactorYubiKeyComponent } from "../auth/settings/two-factor-yubikey.component";
-import { VerifyEmailComponent } from "../auth/settings/verify-email.component";
 import { UserVerificationModule } from "../auth/shared/components/user-verification";
 import { SsoComponent } from "../auth/sso.component";
 import { TwoFactorOptionsComponent } from "../auth/two-factor-options.component";
@@ -67,7 +69,6 @@ import { HeaderModule } from "../layouts/header/header.module";
 import { ProductSwitcherModule } from "../layouts/product-switcher/product-switcher.module";
 import { UserLayoutComponent } from "../layouts/user-layout.component";
 import { DomainRulesComponent } from "../settings/domain-rules.component";
-import { LowKdfComponent } from "../settings/low-kdf.component";
 import { PreferencesComponent } from "../settings/preferences.component";
 import { VaultTimeoutInputComponent } from "../settings/vault-timeout-input.component";
 import { GeneratorComponent } from "../tools/generator.component";
@@ -106,6 +107,7 @@ import { SharedModule } from "./shared.module";
     OrganizationBadgeModule,
     PipesModule,
     PasswordCalloutComponent,
+    UserVerificationFormInputComponent,
     DangerZoneComponent,
     LayoutComponent,
     NavigationModule,
@@ -113,10 +115,10 @@ import { SharedModule } from "./shared.module";
     OrganizationLayoutComponent,
     UserLayoutComponent,
     PaymentMethodWarningsModule,
+    VerifyRecoverDeleteOrgComponent,
   ],
   declarations: [
     AcceptFamilySponsorshipComponent,
-    AcceptOrganizationComponent,
     AccountComponent,
     AddEditComponent,
     AddEditCustomFieldsComponent,
@@ -126,7 +128,7 @@ import { SharedModule } from "./shared.module";
     ChangeEmailComponent,
     CollectionsComponent,
     DeauthorizeSessionsComponent,
-    DeleteAccountComponent,
+    DeleteAccountDialogComponent,
     DomainRulesComponent,
     EmergencyAccessAddEditComponent,
     EmergencyAccessAttachmentsComponent,
@@ -154,7 +156,7 @@ import { SharedModule } from "./shared.module";
     PreferencesComponent,
     PremiumBadgeComponent,
     ProfileComponent,
-    ChangeAvatarComponent,
+    ChangeAvatarDialogComponent,
     ProvidersComponent,
     PurgeVaultComponent,
     RecoverDeleteComponent,
@@ -182,16 +184,13 @@ import { SharedModule } from "./shared.module";
     UpdatePasswordComponent,
     UpdateTempPasswordComponent,
     VaultTimeoutInputComponent,
-    VerifyEmailComponent,
     VerifyEmailTokenComponent,
     VerifyRecoverDeleteComponent,
     VerifyRecoverDeleteProviderComponent,
-    LowKdfComponent,
   ],
   exports: [
     UserVerificationModule,
     PremiumBadgeComponent,
-    AcceptOrganizationComponent,
     AccountComponent,
     AddEditComponent,
     AddEditCustomFieldsComponent,
@@ -201,7 +200,7 @@ import { SharedModule } from "./shared.module";
     ChangeEmailComponent,
     CollectionsComponent,
     DeauthorizeSessionsComponent,
-    DeleteAccountComponent,
+    DeleteAccountDialogComponent,
     DomainRulesComponent,
     DynamicAvatarComponent,
     EmergencyAccessAddEditComponent,
@@ -231,7 +230,7 @@ import { SharedModule } from "./shared.module";
     PreferencesComponent,
     PremiumBadgeComponent,
     ProfileComponent,
-    ChangeAvatarComponent,
+    ChangeAvatarDialogComponent,
     ProvidersComponent,
     PurgeVaultComponent,
     RecoverDeleteComponent,
@@ -260,11 +259,9 @@ import { SharedModule } from "./shared.module";
     UpdateTempPasswordComponent,
     UserLayoutComponent,
     VaultTimeoutInputComponent,
-    VerifyEmailComponent,
     VerifyEmailTokenComponent,
     VerifyRecoverDeleteComponent,
     VerifyRecoverDeleteProviderComponent,
-    LowKdfComponent,
     HeaderModule,
     DangerZoneComponent,
   ],

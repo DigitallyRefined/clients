@@ -1,29 +1,36 @@
 import {
-  NEVER,
-  Observable,
-  Subject,
   combineLatest,
   firstValueFrom,
   map,
   mergeWith,
+  NEVER,
+  Observable,
   of,
   shareReplay,
+  Subject,
   switchMap,
   tap,
 } from "rxjs";
 import { SemVer } from "semver";
 
-import { FeatureFlag, FeatureFlagValue } from "../../../enums/feature-flag.enum";
+import {
+  DefaultFeatureFlagValue,
+  FeatureFlag,
+  FeatureFlagValueType,
+} from "../../../enums/feature-flag.enum";
 import { UserId } from "../../../types/guid";
 import { ConfigApiServiceAbstraction } from "../../abstractions/config/config-api.service.abstraction";
 import { ConfigService } from "../../abstractions/config/config.service";
 import { ServerConfig } from "../../abstractions/config/server-config";
 import { EnvironmentService, Region } from "../../abstractions/environment.service";
 import { LogService } from "../../abstractions/log.service";
+import { devFlagEnabled, devFlagValue } from "../../misc/flags";
 import { ServerConfigData } from "../../models/data/server-config.data";
 import { CONFIG_DISK, KeyDefinition, StateProvider, UserKeyDefinition } from "../../state";
 
-export const RETRIEVAL_INTERVAL = 3_600_000; // 1 hour
+export const RETRIEVAL_INTERVAL = devFlagEnabled("configRetrievalIntervalMs")
+  ? (devFlagValue("configRetrievalIntervalMs") as number)
+  : 3_600_000; // 1 hour
 
 export type ApiUrl = string;
 
@@ -89,20 +96,21 @@ export class DefaultConfigService implements ConfigService {
       map((config) => config?.environment?.cloudRegion ?? Region.US),
     );
   }
-  getFeatureFlag$<T extends FeatureFlagValue>(key: FeatureFlag, defaultValue?: T) {
+
+  getFeatureFlag$<Flag extends FeatureFlag>(key: Flag) {
     return this.serverConfig$.pipe(
       map((serverConfig) => {
         if (serverConfig?.featureStates == null || serverConfig.featureStates[key] == null) {
-          return defaultValue;
+          return DefaultFeatureFlagValue[key];
         }
 
-        return serverConfig.featureStates[key] as T;
+        return serverConfig.featureStates[key] as FeatureFlagValueType<Flag>;
       }),
     );
   }
 
-  async getFeatureFlag<T extends FeatureFlagValue>(key: FeatureFlag, defaultValue?: T) {
-    return await firstValueFrom(this.getFeatureFlag$(key, defaultValue));
+  async getFeatureFlag<Flag extends FeatureFlag>(key: Flag) {
+    return await firstValueFrom(this.getFeatureFlag$(key));
   }
 
   checkServerMeetsVersionRequirement$(minimumRequiredServerVersion: SemVer) {

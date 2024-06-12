@@ -424,6 +424,10 @@ img,
 .modal-title,
 .overlay-container {
   user-select: none;
+
+  &.user-select {
+    user-select: auto;
+  }
 }
 
 app-about .modal-body > *,
@@ -453,4 +457,15 @@ html.force_redraw {
 
 .rounded-circle {
   border-radius: 50% !important;
+}
+
+/* override for vault icon in browser (pre extension refresh) */
+app-vault-icon:not(app-vault-list-items-container app-vault-icon) > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  float: left;
+  height: 36px;
+  width: 34px;
+  margin-left: -5px;
 }

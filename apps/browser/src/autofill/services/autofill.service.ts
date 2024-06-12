@@ -1,8 +1,11 @@
-import { firstValueFrom } from "rxjs";
+import { filter, firstValueFrom, Observable, scan, startWith } from "rxjs";
+import { pairwise } from "rxjs/operators";
 
 import { EventCollectionService } from "@bitwarden/common/abstractions/event/event-collection.service";
 import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
+import { AuthService } from "@bitwarden/common/auth/abstractions/auth.service";
 import { UserVerificationService } from "@bitwarden/common/auth/abstractions/user-verification/user-verification.service.abstraction";
+import { AuthenticationStatus } from "@bitwarden/common/auth/enums/authentication-status";
 import { AutofillOverlayVisibility } from "@bitwarden/common/autofill/constants";
 import { AutofillSettingsServiceAbstraction } from "@bitwarden/common/autofill/services/autofill-settings.service";
 import { DomainSettingsService } from "@bitwarden/common/autofill/services/domain-settings.service";
@@ -14,6 +17,7 @@ import {
   UriMatchStrategy,
 } from "@bitwarden/common/models/domain/domain-service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
+import { MessageListener } from "@bitwarden/common/platform/messaging";
 import { CipherService } from "@bitwarden/common/vault/abstractions/cipher.service";
 import { TotpService } from "@bitwarden/common/vault/abstractions/totp.service";
 import { FieldType, CipherType } from "@bitwarden/common/vault/enums";
@@ -24,6 +28,7 @@ import { FieldView } from "@bitwarden/common/vault/models/view/field.view";
 import { BrowserApi } from "../../platform/browser/browser-api";
 import { ScriptInjectorService } from "../../platform/services/abstractions/script-injector.service";
 import { openVaultItemPasswordRepromptPopout } from "../../vault/popup/utils/vault-popout-window";
+import { AutofillMessageCommand, AutofillMessageSender } from "../enums/autofill-message.enums";
 import { AutofillPort } from "../enums/autofill-port.enums";
 import AutofillField from "../models/autofill-field";
 import AutofillPageDetails from "../models/autofill-page-details";
@@ -32,6 +37,7 @@ import AutofillScript from "../models/autofill-script";
 import {
   AutoFillOptions,
   AutofillService as AutofillServiceInterface,
+  COLLECT_PAGE_DETAILS_RESPONSE_COMMAND,
   FormData,
   GenerateFillScriptOptions,
   PageDetail,
@@ -60,7 +66,47 @@ export default class AutofillService implements AutofillServiceInterface {
     private billingAccountProfileStateService: BillingAccountProfileStateService,
     private scriptInjectorService: ScriptInjectorService,
     private accountService: AccountService,
+    private authService: AuthService,
+    private messageListener: MessageListener,
   ) {}
+
+  /**
+   * Collects page details from the specific tab. This method returns an observable that can
+   * be subscribed to in order to build the results from all collectPageDetailsResponse
+   * messages from the given tab.
+   *
+   * @param tab The tab to collect page details from
+   */
+  collectPageDetailsFromTab$(tab: chrome.tabs.Tab): Observable<PageDetail[]> {
+    const pageDetailsFromTab$ = this.messageListener
+      .messages$(COLLECT_PAGE_DETAILS_RESPONSE_COMMAND)
+      .pipe(
+        filter(
+          (message) =>
+            message.tab.id === tab.id &&
+            message.sender === AutofillMessageSender.collectPageDetailsFromTabObservable,
+        ),
+        scan(
+          (acc, message) => [
+            ...acc,
+            {
+              frameId: message.webExtSender.frameId,
+              tab: message.tab,
+              details: message.details,
+            },
+          ],
+          [] as PageDetail[],
+        ),
+      );
+
+    void BrowserApi.tabSendMessage(tab, {
+      tab: tab,
+      command: AutofillMessageCommand.collectPageDetails,
+      sender: AutofillMessageSender.collectPageDetailsFromTabObservable,
+    });
+
+    return pageDetailsFromTab$;
+  }
 
   /**
    * Triggers on installation of the extension Handles injecting
@@ -70,10 +116,12 @@ export default class AutofillService implements AutofillServiceInterface {
    */
   async loadAutofillScriptsOnInstall() {
     BrowserApi.addListener(chrome.runtime.onConnect, this.handleInjectedScriptPortConnection);
-
-    // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    this.injectAutofillScriptsInAllTabs();
+    void this.injectAutofillScriptsInAllTabs();
+    this.autofillSettingsService.inlineMenuVisibility$
+      .pipe(startWith(undefined), pairwise())
+      .subscribe(([previousSetting, currentSetting]) =>
+        this.handleInlineMenuVisibilityChange(previousSetting, currentSetting),
+      );
   }
 
   /**
@@ -107,24 +155,25 @@ export default class AutofillService implements AutofillServiceInterface {
     frameId = 0,
     triggeringOnPageLoad = true,
   ): Promise<void> {
-    // Autofill settings loaded from state can await the active account state indefinitely if
-    // not guarded by an active account check (e.g. the user is logged in)
+    // Autofill user settings loaded from state can await the active account state indefinitely
+    // if not guarded by an active account check (e.g. the user is logged in)
     const activeAccount = await firstValueFrom(this.accountService.activeAccount$);
-
-    // These settings are not available until the user logs in
+    const authStatus = await firstValueFrom(this.authService.activeAccountStatus$);
+    const accountIsUnlocked = authStatus === AuthenticationStatus.Unlocked;
     let overlayVisibility: InlineMenuVisibilitySetting = AutofillOverlayVisibility.Off;
     let autoFillOnPageLoadIsEnabled = false;
 
     if (activeAccount) {
       overlayVisibility = await this.getOverlayVisibility();
     }
+
     const mainAutofillScript = overlayVisibility
       ? "bootstrap-autofill-overlay.js"
       : "bootstrap-autofill.js";
 
     const injectedScripts = [mainAutofillScript];
 
-    if (activeAccount) {
+    if (activeAccount && accountIsUnlocked) {
       autoFillOnPageLoadIsEnabled = await this.getAutofillOnPageLoad();
     }
 
@@ -2087,10 +2136,39 @@ export default class AutofillService implements AutofillServiceInterface {
     for (let index = 0; index < tabs.length; index++) {
       const tab = tabs[index];
       if (tab.url?.startsWith("http")) {
-        // FIXME: Verify that this floating promise is intentional. If it is, add an explanatory comment and ensure there is proper error handling.
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        this.injectAutofillScripts(tab, 0, false);
+        const frames = await BrowserApi.getAllFrameDetails(tab.id);
+        frames.forEach((frame) => this.injectAutofillScripts(tab, frame.frameId, false));
       }
     }
+  }
+
+  /**
+   * Updates the autofill inline menu visibility setting in all active tabs
+   * when the InlineMenuVisibilitySetting observable is updated.
+   *
+   * @param previousSetting - The previous setting value
+   * @param currentSetting - The current setting value
+   */
+  private async handleInlineMenuVisibilityChange(
+    previousSetting: InlineMenuVisibilitySetting,
+    currentSetting: InlineMenuVisibilitySetting,
+  ) {
+    if (previousSetting === undefined || previousSetting === currentSetting) {
+      return;
+    }
+
+    const inlineMenuPreviouslyDisabled = previousSetting === AutofillOverlayVisibility.Off;
+    const inlineMenuCurrentlyDisabled = currentSetting === AutofillOverlayVisibility.Off;
+    if (!inlineMenuPreviouslyDisabled && !inlineMenuCurrentlyDisabled) {
+      const tabs = await BrowserApi.tabsQuery({});
+      tabs.forEach((tab) =>
+        BrowserApi.tabSendMessageData(tab, "updateAutofillOverlayVisibility", {
+          autofillOverlayVisibility: currentSetting,
+        }),
+      );
+      return;
+    }
+
+    await this.reloadAutofillScripts();
   }
 }

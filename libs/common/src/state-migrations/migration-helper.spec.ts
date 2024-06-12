@@ -2,6 +2,8 @@ import { MockProxy, mock } from "jest-mock-extended";
 
 // eslint-disable-next-line import/no-restricted-paths -- Needed to print log messages
 import { FakeStorageService } from "../../spec/fake-storage.service";
+// eslint-disable-next-line import/no-restricted-paths -- Needed client type enum
+import { ClientType } from "../enums";
 // eslint-disable-next-line import/no-restricted-paths -- Needed to print log messages
 import { LogService } from "../platform/abstractions/log.service";
 // eslint-disable-next-line import/no-restricted-paths -- Needed to interface with storage locations
@@ -25,6 +27,14 @@ const exampleJSON = {
   },
   global_serviceName_key: "global_serviceName_key",
   user_userId_serviceName_key: "user_userId_serviceName_key",
+  global_account_accounts: {
+    "c493ed01-4e08-4e88-abc7-332f380ca760": {
+      otherStuff: "otherStuff3",
+    },
+    "23e61a5f-2ece-4f5e-b499-f0bc489482a9": {
+      otherStuff: "otherStuff4",
+    },
+  },
 };
 
 describe("RemoveLegacyEtmKeyMigrator", () => {
@@ -32,116 +42,164 @@ describe("RemoveLegacyEtmKeyMigrator", () => {
   let logService: MockProxy<LogService>;
   let sut: MigrationHelper;
 
-  beforeEach(() => {
-    logService = mock();
-    storage = mock();
-    storage.get.mockImplementation((key) => (exampleJSON as any)[key]);
+  const clientTypes = Object.values(ClientType);
 
-    sut = new MigrationHelper(0, storage, logService, "general");
-  });
+  describe.each(clientTypes)("for client %s", (clientType) => {
+    beforeEach(() => {
+      logService = mock();
+      storage = mock();
+      storage.get.mockImplementation((key) => (exampleJSON as any)[key]);
 
-  describe("get", () => {
-    it("should delegate to storage.get", async () => {
-      await sut.get("key");
-      expect(storage.get).toHaveBeenCalledWith("key");
-    });
-  });
-
-  describe("set", () => {
-    it("should delegate to storage.save", async () => {
-      await sut.set("key", "value");
-      expect(storage.save).toHaveBeenCalledWith("key", "value");
-    });
-  });
-
-  describe("getAccounts", () => {
-    it("should return all accounts", async () => {
-      const accounts = await sut.getAccounts();
-      expect(accounts).toEqual([
-        { userId: "c493ed01-4e08-4e88-abc7-332f380ca760", account: { otherStuff: "otherStuff1" } },
-        { userId: "23e61a5f-2ece-4f5e-b499-f0bc489482a9", account: { otherStuff: "otherStuff2" } },
-      ]);
+      sut = new MigrationHelper(0, storage, logService, "general", clientType);
     });
 
-    it("should handle missing authenticatedAccounts", async () => {
-      storage.get.mockImplementation((key) =>
-        key === "authenticatedAccounts" ? undefined : (exampleJSON as any)[key],
-      );
-      const accounts = await sut.getAccounts();
-      expect(accounts).toEqual([]);
-    });
-  });
-
-  describe("getFromGlobal", () => {
-    it("should return the correct value", async () => {
-      sut.currentVersion = 9;
-      const value = await sut.getFromGlobal({
-        stateDefinition: { name: "serviceName" },
-        key: "key",
+    describe("get", () => {
+      it("should delegate to storage.get", async () => {
+        await sut.get("key");
+        expect(storage.get).toHaveBeenCalledWith("key");
       });
-      expect(value).toEqual("global_serviceName_key");
     });
 
-    it("should throw if the current version is less than 9", () => {
-      expect(() =>
-        sut.getFromGlobal({ stateDefinition: { name: "serviceName" }, key: "key" }),
-      ).toThrowError("No key builder should be used for versions prior to 9.");
-    });
-  });
-
-  describe("setToGlobal", () => {
-    it("should set the correct value", async () => {
-      sut.currentVersion = 9;
-      await sut.setToGlobal({ stateDefinition: { name: "serviceName" }, key: "key" }, "new_value");
-      expect(storage.save).toHaveBeenCalledWith("global_serviceName_key", "new_value");
+    describe("set", () => {
+      it("should delegate to storage.save", async () => {
+        await sut.set("key", "value");
+        expect(storage.save).toHaveBeenCalledWith("key", "value");
+      });
     });
 
-    it("should throw if the current version is less than 9", () => {
-      expect(() =>
-        sut.setToGlobal(
+    describe("getAccounts", () => {
+      it("should return all accounts", async () => {
+        const accounts = await sut.getAccounts();
+        expect(accounts).toEqual([
+          {
+            userId: "c493ed01-4e08-4e88-abc7-332f380ca760",
+            account: { otherStuff: "otherStuff1" },
+          },
+          {
+            userId: "23e61a5f-2ece-4f5e-b499-f0bc489482a9",
+            account: { otherStuff: "otherStuff2" },
+          },
+        ]);
+      });
+
+      it("should handle missing authenticatedAccounts", async () => {
+        storage.get.mockImplementation((key) =>
+          key === "authenticatedAccounts" ? undefined : (exampleJSON as any)[key],
+        );
+        const accounts = await sut.getAccounts();
+        expect(accounts).toEqual([]);
+      });
+
+      it("handles global scoped known accounts for version 60 and after", async () => {
+        sut.currentVersion = 60;
+        const accounts = await sut.getAccounts();
+        expect(accounts).toEqual([
+          // Note, still gets values stored in state service objects, just grabs user ids from global
+          {
+            userId: "c493ed01-4e08-4e88-abc7-332f380ca760",
+            account: { otherStuff: "otherStuff1" },
+          },
+          {
+            userId: "23e61a5f-2ece-4f5e-b499-f0bc489482a9",
+            account: { otherStuff: "otherStuff2" },
+          },
+        ]);
+      });
+    });
+
+    describe("getKnownUserIds", () => {
+      it("returns all user ids", async () => {
+        const userIds = await sut.getKnownUserIds();
+        expect(userIds).toEqual([
+          "c493ed01-4e08-4e88-abc7-332f380ca760",
+          "23e61a5f-2ece-4f5e-b499-f0bc489482a9",
+        ]);
+      });
+
+      it("returns all user ids when version is 60 or greater", async () => {
+        sut.currentVersion = 60;
+        const userIds = await sut.getKnownUserIds();
+        expect(userIds).toEqual([
+          "c493ed01-4e08-4e88-abc7-332f380ca760",
+          "23e61a5f-2ece-4f5e-b499-f0bc489482a9",
+        ]);
+      });
+    });
+
+    describe("getFromGlobal", () => {
+      it("should return the correct value", async () => {
+        sut.currentVersion = 9;
+        const value = await sut.getFromGlobal({
+          stateDefinition: { name: "serviceName" },
+          key: "key",
+        });
+        expect(value).toEqual("global_serviceName_key");
+      });
+
+      it("should throw if the current version is less than 9", () => {
+        expect(() =>
+          sut.getFromGlobal({ stateDefinition: { name: "serviceName" }, key: "key" }),
+        ).toThrowError("No key builder should be used for versions prior to 9.");
+      });
+    });
+
+    describe("setToGlobal", () => {
+      it("should set the correct value", async () => {
+        sut.currentVersion = 9;
+        await sut.setToGlobal(
           { stateDefinition: { name: "serviceName" }, key: "key" },
-          "global_serviceName_key",
-        ),
-      ).toThrowError("No key builder should be used for versions prior to 9.");
-    });
-  });
-
-  describe("getFromUser", () => {
-    it("should return the correct value", async () => {
-      sut.currentVersion = 9;
-      const value = await sut.getFromUser("userId", {
-        stateDefinition: { name: "serviceName" },
-        key: "key",
+          "new_value",
+        );
+        expect(storage.save).toHaveBeenCalledWith("global_serviceName_key", "new_value");
       });
-      expect(value).toEqual("user_userId_serviceName_key");
+
+      it("should throw if the current version is less than 9", () => {
+        expect(() =>
+          sut.setToGlobal(
+            { stateDefinition: { name: "serviceName" }, key: "key" },
+            "global_serviceName_key",
+          ),
+        ).toThrowError("No key builder should be used for versions prior to 9.");
+      });
     });
 
-    it("should throw if the current version is less than 9", () => {
-      expect(() =>
-        sut.getFromUser("userId", { stateDefinition: { name: "serviceName" }, key: "key" }),
-      ).toThrowError("No key builder should be used for versions prior to 9.");
-    });
-  });
+    describe("getFromUser", () => {
+      it("should return the correct value", async () => {
+        sut.currentVersion = 9;
+        const value = await sut.getFromUser("userId", {
+          stateDefinition: { name: "serviceName" },
+          key: "key",
+        });
+        expect(value).toEqual("user_userId_serviceName_key");
+      });
 
-  describe("setToUser", () => {
-    it("should set the correct value", async () => {
-      sut.currentVersion = 9;
-      await sut.setToUser(
-        "userId",
-        { stateDefinition: { name: "serviceName" }, key: "key" },
-        "new_value",
-      );
-      expect(storage.save).toHaveBeenCalledWith("user_userId_serviceName_key", "new_value");
+      it("should throw if the current version is less than 9", () => {
+        expect(() =>
+          sut.getFromUser("userId", { stateDefinition: { name: "serviceName" }, key: "key" }),
+        ).toThrowError("No key builder should be used for versions prior to 9.");
+      });
     });
 
-    it("should throw if the current version is less than 9", () => {
-      expect(() =>
-        sut.setToUser(
+    describe("setToUser", () => {
+      it("should set the correct value", async () => {
+        sut.currentVersion = 9;
+        await sut.setToUser(
           "userId",
           { stateDefinition: { name: "serviceName" }, key: "key" },
           "new_value",
-        ),
-      ).toThrowError("No key builder should be used for versions prior to 9.");
+        );
+        expect(storage.save).toHaveBeenCalledWith("user_userId_serviceName_key", "new_value");
+      });
+
+      it("should throw if the current version is less than 9", () => {
+        expect(() =>
+          sut.setToUser(
+            "userId",
+            { stateDefinition: { name: "serviceName" }, key: "key" },
+            "new_value",
+          ),
+        ).toThrowError("No key builder should be used for versions prior to 9.");
+      });
     });
   });
 });
@@ -151,6 +209,7 @@ export function mockMigrationHelper(
   storageJson: any,
   stateVersion = 0,
   type: MigrationHelperType = "general",
+  clientType: ClientType = ClientType.Web,
 ): MockProxy<MigrationHelper> {
   const logService: MockProxy<LogService> = mock();
   const storage: MockProxy<AbstractStorageService> = mock();
@@ -158,7 +217,7 @@ export function mockMigrationHelper(
   storage.save.mockImplementation(async (key, value) => {
     (storageJson as any)[key] = value;
   });
-  const helper = new MigrationHelper(stateVersion, storage, logService, type);
+  const helper = new MigrationHelper(stateVersion, storage, logService, type, clientType);
 
   const mockHelper = mock<MigrationHelper>();
   mockHelper.get.mockImplementation((key) => helper.get(key));
@@ -176,8 +235,14 @@ export function mockMigrationHelper(
     helper.setToUser(userId, keyDefinition, value),
   );
   mockHelper.getAccounts.mockImplementation(() => helper.getAccounts());
+  mockHelper.getKnownUserIds.mockImplementation(() => helper.getKnownUserIds());
+  mockHelper.removeFromGlobal.mockImplementation((keyDefinition) =>
+    helper.removeFromGlobal(keyDefinition),
+  );
+  mockHelper.remove.mockImplementation((key) => helper.remove(key));
 
   mockHelper.type = helper.type;
+  mockHelper.clientType = helper.clientType;
 
   return mockHelper;
 }
@@ -291,11 +356,19 @@ export async function runMigrator<
   initalData?: InitialDataHint<TUsers>,
   direction: "migrate" | "rollback" = "migrate",
 ): Promise<Record<string, unknown>> {
-  // Inject fake data at every level of the object
-  const allInjectedData = injectData(initalData, []);
+  const clonedData = JSON.parse(JSON.stringify(initalData ?? {}));
 
-  const fakeStorageService = new FakeStorageService(initalData);
-  const helper = new MigrationHelper(migrator.fromVersion, fakeStorageService, mock(), "general");
+  // Inject fake data at every level of the object
+  const allInjectedData = injectData(clonedData, []);
+
+  const fakeStorageService = new FakeStorageService(clonedData);
+  const helper = new MigrationHelper(
+    migrator.fromVersion,
+    fakeStorageService,
+    mock(),
+    "general",
+    ClientType.Web,
+  );
 
   // Run their migrations
   if (direction === "rollback") {

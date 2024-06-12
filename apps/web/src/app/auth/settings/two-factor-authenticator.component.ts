@@ -1,6 +1,10 @@
-import { Component, OnDestroy, OnInit } from "@angular/core";
+import { DIALOG_DATA, DialogConfig, DialogRef } from "@angular/cdk/dialog";
+import { Component, EventEmitter, Inject, OnDestroy, OnInit, Output } from "@angular/core";
+import { FormControl, FormGroup, Validators } from "@angular/forms";
+import { firstValueFrom, map } from "rxjs";
 
 import { ApiService } from "@bitwarden/common/abstractions/api.service";
+import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
 import { UserVerificationService } from "@bitwarden/common/auth/abstractions/user-verification/user-verification.service.abstraction";
 import { TwoFactorProviderType } from "@bitwarden/common/auth/enums/two-factor-provider-type";
 import { UpdateTwoFactorAuthenticatorRequest } from "@bitwarden/common/auth/models/request/update-two-factor-authenticator.request";
@@ -9,7 +13,6 @@ import { AuthResponse } from "@bitwarden/common/auth/types/auth-response";
 import { I18nService } from "@bitwarden/common/platform/abstractions/i18n.service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
-import { StateService } from "@bitwarden/common/platform/abstractions/state.service";
 import { Utils } from "@bitwarden/common/platform/misc/utils";
 import { DialogService } from "@bitwarden/components";
 
@@ -37,21 +40,27 @@ export class TwoFactorAuthenticatorComponent
   extends TwoFactorBaseComponent
   implements OnInit, OnDestroy
 {
+  @Output() onChangeStatus = new EventEmitter<boolean>();
   type = TwoFactorProviderType.Authenticator;
   key: string;
-  token: string;
   formPromise: Promise<TwoFactorAuthenticatorResponse>;
 
   override componentName = "app-two-factor-authenticator";
   private qrScript: HTMLScriptElement;
 
+  protected formGroup = new FormGroup({
+    token: new FormControl(null, [Validators.required]),
+  });
+
   constructor(
+    @Inject(DIALOG_DATA) protected data: AuthResponse<TwoFactorAuthenticatorResponse>,
+    private dialogRef: DialogRef,
     apiService: ApiService,
     i18nService: I18nService,
     userVerificationService: UserVerificationService,
     platformUtilsService: PlatformUtilsService,
     logService: LogService,
-    private stateService: StateService,
+    private accountService: AccountService,
     dialogService: DialogService,
   ) {
     super(
@@ -67,8 +76,9 @@ export class TwoFactorAuthenticatorComponent
     this.qrScript.async = true;
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     window.document.body.appendChild(this.qrScript);
+    await this.auth(this.data);
   }
 
   ngOnDestroy() {
@@ -80,17 +90,24 @@ export class TwoFactorAuthenticatorComponent
     return this.processResponse(authResponse.response);
   }
 
-  submit() {
+  submit = async () => {
     if (this.enabled) {
-      return super.disable(this.formPromise);
+      await this.disableAuthentication(this.formPromise);
+      this.onChangeStatus.emit(this.enabled);
+      this.close();
     } else {
-      return this.enable();
+      await this.enable();
+      this.onChangeStatus.emit(this.enabled);
     }
+  };
+
+  private async disableAuthentication(promise: Promise<unknown>) {
+    return super.disable(promise);
   }
 
   protected async enable() {
     const request = await this.buildRequestModel(UpdateTwoFactorAuthenticatorRequest);
-    request.token = this.token;
+    request.token = this.formGroup.value.token;
     request.key = this.key;
 
     return super.enable(async () => {
@@ -101,10 +118,12 @@ export class TwoFactorAuthenticatorComponent
   }
 
   private async processResponse(response: TwoFactorAuthenticatorResponse) {
-    this.token = null;
+    this.formGroup.get("token").setValue(null);
     this.enabled = response.enabled;
     this.key = response.key;
-    const email = await this.stateService.getEmail();
+    const email = await firstValueFrom(
+      this.accountService.activeAccount$.pipe(map((a) => a?.email)),
+    );
     window.setTimeout(() => {
       new window.QRious({
         element: document.getElementById("qr"),
@@ -117,5 +136,16 @@ export class TwoFactorAuthenticatorComponent
         size: 160,
       });
     }, 100);
+  }
+
+  close = () => {
+    this.dialogRef.close(this.enabled);
+  };
+
+  static open(
+    dialogService: DialogService,
+    config: DialogConfig<AuthResponse<TwoFactorAuthenticatorResponse>>,
+  ) {
+    return dialogService.open<boolean>(TwoFactorAuthenticatorComponent, config);
   }
 }

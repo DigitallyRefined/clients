@@ -581,8 +581,14 @@
   "accessLevel": {
     "message": "Erişim seviyesi"
   },
+  "accessing": {
+    "message": "Accessing"
+  },
   "loggedOut": {
     "message": "Çıkış yapıldı"
+  },
+  "loggedOutDesc": {
+    "message": "You have been logged out of your account."
   },
   "loginExpired": {
     "message": "Oturumunuz zaman aşımına uğradı."
@@ -657,7 +663,7 @@
     "message": "Geçiş anahtarı başarıyla oluşturuldu."
   },
   "customPasskeyNameInfo": {
-    "message": "Tanımlamanıza yardımcı olması için Passkey'inize bir isim verin."
+    "message": "Sonradan tanıyabilmeniz için geçiş anahtarınıza bir isim verin."
   },
   "useForVaultEncryption": {
     "message": "Kasa şifrelemesinde kullan"
@@ -678,7 +684,7 @@
     "message": "Şifreleme için kullanılır"
   },
   "loginWithPasskeyEnabled": {
-    "message": "Passkey ile giriş yap"
+    "message": "Geçiş anahtarıyla giriş açık"
   },
   "passkeySaved": {
     "message": "$NAME$ kaydedildi",
@@ -696,10 +702,10 @@
     "message": "Geçiş anahtarını kaldır"
   },
   "removePasskeyInfo": {
-    "message": "Tüm Passkey'ler kaldırılırsa, ana parolanız olmadan yeni cihazlara giriş yapamazsınız."
+    "message": "Tüm geçiş anahtarları kaldırılırsa ana parolanız olmadan yeni cihazlara giriş yapamazsınız."
   },
   "passkeyLimitReachedInfo": {
-    "message": "Passkey sınırına ulaşıldı. Başka bir Passkey eklemek için bir Passley'i kaldırın."
+    "message": "Geçiş anahtarı sınırına ulaşıldı. Yeni bir geçiş anahtarı eklemek için mevcut bir geçiş anahtarını kaldırın."
   },
   "tryAgain": {
     "message": "Yeniden dene"
@@ -1047,6 +1053,12 @@
   "copyUuid": {
     "message": "UUID'yi kopyala"
   },
+  "errorRefreshingAccessToken": {
+    "message": "Access Token Refresh Error"
+  },
+  "errorRefreshingAccessTokenDesc": {
+    "message": "No refresh token or API keys found. Please try logging out and logging back in."
+  },
   "warning": {
     "message": "Uyarı"
   },
@@ -1340,6 +1352,9 @@
   },
   "accountDeletedDesc": {
     "message": "Hesabınız kapatıldı ve ilişkili tüm veriler silindi."
+  },
+  "deleteOrganizationWarning": {
+    "message": "Deleting your organization is permanent. It cannot be undone."
   },
   "myAccount": {
     "message": "Hesabım"
@@ -1710,11 +1725,11 @@
   "twoFactorDuoDesc": {
     "message": "Duo Yönetici panelinizden Bitwarden uygulama bilgilerini girin."
   },
-  "twoFactorDuoIntegrationKey": {
-    "message": "Entegrasyon anahtarı"
+  "twoFactorDuoClientId": {
+    "message": "Client Id"
   },
-  "twoFactorDuoSecretKey": {
-    "message": "Gizli anahtar"
+  "twoFactorDuoClientSecret": {
+    "message": "Client Secret"
   },
   "twoFactorDuoApiHostname": {
     "message": "API sunucusu"
@@ -1809,12 +1824,16 @@
   "unsecuredWebsitesFound": {
     "message": "Güvensiz web siteleri bulundu"
   },
-  "unsecuredWebsitesFoundDesc": {
-    "message": "Kasanızda güvenli olmayan URI'ye sahip $COUNT$ kayıt bulduk. Web sitesi izin veriyorsa URI şemasını https:// olarak değiştirmelisiniz.",
+  "unsecuredWebsitesFoundReportDesc": {
+    "message": "We found $COUNT$ items in your $VAULT$ with unsecured URIs. You should change their URI scheme to https:// if the website allows it.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1830,12 +1849,16 @@
   "inactive2faFound": {
     "message": "İki aşamalı girişi olmayan hesaplar bulundu"
   },
-  "inactive2faFoundDesc": {
-    "message": "Kasanızda iki aşamalı giriş kullanmıyor olabilecek $COUNT$ web sitesi bulduk (2fa.directory’ye göre). Bu hesapları daha iyi korumak için iki aşamalı girişi etkinleştirmelisiniz.",
+  "inactive2faFoundReportDesc": {
+    "message": "We found $COUNT$ website(s) in your $VAULT$ that may not be configured with two-step login (according to 2fa.directory). To further protect these accounts, you should set up two-step login.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1854,12 +1877,16 @@
   "exposedPasswordsFound": {
     "message": "Açığa çıkmış parolalar bulundu"
   },
-  "exposedPasswordsFoundDesc": {
-    "message": "Kasanızda, bilinen veri ihlallerine maruz kalmış parolalara sahip $COUNT$ kayıt bulundu. Bu parolaları değiştirmelisiniz.",
+  "exposedPasswordsFoundReportDesc": {
+    "message": "We found $COUNT$ items in your $VAULT$ that have passwords that were exposed in known data breaches. You should change them to use a new password.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1887,12 +1914,16 @@
   "weakPasswordsFound": {
     "message": "Zayıf parolalar pulundu"
   },
-  "weakPasswordsFoundDesc": {
-    "message": "Kasanızda zayıf parolalara sahip $COUNT$ kayıt bulduk. Bunları güncelleyip daha güçlü parolalar kullanmalısınız.",
+  "weakPasswordsFoundReportDesc": {
+    "message": "We found $COUNT$ items in your $VAULT$ with passwords that are not strong. You should update them to use stronger passwords.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -1908,12 +1939,16 @@
   "reusedPasswordsFound": {
     "message": "Yeniden kullanılmış parolalar bulundu"
   },
-  "reusedPasswordsFoundDesc": {
-    "message": "Kasanızda tekrar kullanılmakta olan $COUNT$ parola bulduk. Onları benzersiz parolalarla değiştirmelisiniz.",
+  "reusedPasswordsFoundReportDesc": {
+    "message": "We found $COUNT$ passwords that are being reused in your $VAULT$. You should change them to a unique value.",
     "placeholders": {
       "count": {
         "content": "$1",
         "example": "8"
+      },
+      "vault": {
+        "content": "$2",
+        "example": "this will be 'vault' or 'vaults'"
       }
     }
   },
@@ -2323,7 +2358,7 @@
     "message": "Müşteri hizmetleriyle iletişime geçin"
   },
   "contactSupportShort": {
-    "message": "Destek Ekibiyle İletişime Geç"
+    "message": "Destek ekibiyle iletişime geç"
   },
   "updatedPaymentMethod": {
     "message": "Ödeme yöntemi güncellendi."
@@ -2427,7 +2462,7 @@
     "message": "İşletmeler ve diğer ekipler için."
   },
   "planNameTeamsStarter": {
-    "message": "Başlangıç Ekipleri"
+    "message": "Teams Starter"
   },
   "planNameEnterprise": {
     "message": "Kurumsal"
@@ -2767,6 +2802,12 @@
   },
   "all": {
     "message": "Tümü"
+  },
+  "addAccess": {
+    "message": "Add Access"
+  },
+  "addAccessFilter": {
+    "message": "Add Access Filter"
   },
   "refresh": {
     "message": "Yenile"
@@ -3215,6 +3256,27 @@
   "device": {
     "message": "Cihaz"
   },
+  "creatingAccountOn": {
+    "message": "Creating account on"
+  },
+  "checkYourEmail": {
+    "message": "Check your email"
+  },
+  "followTheLinkInTheEmailSentTo": {
+    "message": "Follow the link in the email sent to"
+  },
+  "andContinueCreatingYourAccount": {
+    "message": "and continue creating your account."
+  },
+  "noEmail": {
+    "message": "No email?"
+  },
+  "goBack": {
+    "message": "Go back"
+  },
+  "toEditYourEmailAddress": {
+    "message": "to edit your email address."
+  },
   "view": {
     "message": "Görüntüle"
   },
@@ -3361,6 +3423,9 @@
   },
   "deleteRecoverConfirmDesc": {
     "message": "Bitwarden hesabınızı silme talebinde bulundunuz. Onaylamak için aşağıdaki düğmeyi kullanın."
+  },
+  "deleteRecoverOrgConfirmDesc": {
+    "message": "You have requested to delete your Bitwarden organization."
   },
   "myOrganization": {
     "message": "Kuruluşum"
@@ -3539,6 +3604,12 @@
   "subscriptionUserSeatsUnlimitedAutoscale": {
     "message": "Aboneliğinizde yapacağınız değişiklikler toplam faturanızın değişmesine yol açacaktır. Yeni davet edilen üyelerin sayısı abonelik paketinizdeki üye sayısını aşarsa ek üyeler için derhal ödeme alınır."
   },
+  "smStandaloneTrialSeatCountUpdateMessageFragment1": {
+    "message": "If you want to add additional"
+  },
+  "smStandaloneTrialSeatCountUpdateMessageFragment2": {
+    "message": "seats without the bundled offer, please contact"
+  },
   "subscriptionUserSeatsLimitedAutoscale": {
     "message": "Aboneliğinizde yapacağınız değişiklikler toplam faturanızın değişmesine yol açacaktır. Yeni davet edilen üyelerin sayısı abonelik paketinizdeki üye sayısını aşarsa $MAX$ üye sınırınıza ulaşana dek ek üyeler için ödeme alınır.",
     "placeholders": {
@@ -3678,7 +3749,7 @@
     "message": "Kasa zaman aşımı eyleminin ne zaman gerçekleştirileceğini seçin."
   },
   "vaultTimeoutLogoutDesc": {
-    "message": "Kasanızın oturumundan ne zaman çıkış yapılacağını seçin."
+    "message": "Kasanızdan ne zaman çıkış yapılacağını seçin."
   },
   "oneMinute": {
     "message": "1 dakika"
@@ -4415,7 +4486,7 @@
     "message": "Kişisel kasayı kaldır"
   },
   "personalOwnershipPolicyDesc": {
-    "message": "Kişisel sahiplik seçeneğini kapatarak kullanıcıların kasadaki kayıtlarını bir kuruluşa kaydetmesini zorunlu kılabilirsiniz."
+    "message": "Kişisel kasa seçeneğini kapatarak kullanıcıların kayıtlarını bir kuruluşa kaydetmesini zorunlu kılabilirsiniz."
   },
   "personalOwnershipExemption": {
     "message": "Kuruluş sahipleri ve yöneticileri bu ilkenin uygulanmasından muaf tutulur."
@@ -4782,7 +4853,7 @@
     "message": "Ana parolaları olan mevcut hesaplar, yöneticilerin hesaplarını kurtarabilmesi için üyelerin kendi kendilerine kaydolmalarını gerektirecektir. Otomatik kayıt, yeni üyeler için hesap kurtarmayı açacaktır."
   },
   "accountRecoverySingleOrgRequirementDesc": {
-    "message": "The single organization Enterprise policy must be turned on before activating this policy."
+    "message": "Bu ilkeyi etkinleştirmeden önce tek kuruluş kurumsal ilkesi etkinleştirilmelidir."
   },
   "resetPasswordPolicyAutoEnroll": {
     "message": "Otomatik eklenme"
@@ -4957,7 +5028,7 @@
     "message": "Mevcut kuruluşu ekle"
   },
   "addNewOrganization": {
-    "message": "Add new organization"
+    "message": "Yeni kuruluş ekle"
   },
   "myProvider": {
     "message": "Sağlayıcım"
@@ -5524,6 +5595,39 @@
   "rotateBillingSyncTokenTitle": {
     "message": "Faturalandırma Senkronizasyonu Anahtarını yenilemek, önceki anahtarı geçersiz kılar."
   },
+  "selfHostedServer": {
+    "message": "self-hosted"
+  },
+  "customEnvironment": {
+    "message": "Custom environment"
+  },
+  "selfHostedBaseUrlHint": {
+    "message": "Specify the base URL of your on-premises hosted Bitwarden installation. Example: https://bitwarden.company.com"
+  },
+  "selfHostedCustomEnvHeader": {
+    "message": "For advanced configuration, you can specify the base URL of each service independently."
+  },
+  "selfHostedEnvFormInvalid": {
+    "message": "You must add either the base Server URL or at least one custom environment."
+  },
+  "apiUrl": {
+    "message": "API server URL"
+  },
+  "webVaultUrl": {
+    "message": "Web vault server URL"
+  },
+  "identityUrl": {
+    "message": "Identity server URL"
+  },
+  "notificationsUrl": {
+    "message": "Notifications server URL"
+  },
+  "iconsUrl": {
+    "message": "Icons server URL"
+  },
+  "environmentSaved": {
+    "message": "Environment URLs saved"
+  },
   "selfHostingTitle": {
     "message": "Barındırılan"
   },
@@ -5782,6 +5886,108 @@
   "forwardedEmailDesc": {
     "message": "Harici bir yönlendirme servisiyle e-posta maskesi oluştur."
   },
+  "forwarderError": {
+    "message": "$SERVICENAME$ hatası: $ERRORMESSAGE$",
+    "description": "Reports an error returned by a forwarding service to the user.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      },
+      "errormessage": {
+        "content": "$2",
+        "example": "Invalid characters in domain name."
+      }
+    }
+  },
+  "forwarderGeneratedBy": {
+    "message": "Bitwarden tarafından üretildi.",
+    "description": "Displayed with the address on the forwarding service's configuration screen."
+  },
+  "forwarderGeneratedByWithWebsite": {
+    "message": "Web sitesi: $WEBSITE$. Bitwarden tarafından üretildi.",
+    "description": "Displayed with the address on the forwarding service's configuration screen.",
+    "placeholders": {
+      "WEBSITE": {
+        "content": "$1",
+        "example": "www.example.com"
+      }
+    }
+  },
+  "forwaderInvalidToken": {
+    "message": "Invalid $SERVICENAME$ API token",
+    "description": "Displayed when the user's API token is empty or rejected by the forwarding service.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwaderInvalidTokenWithMessage": {
+    "message": "Invalid $SERVICENAME$ API token: $ERRORMESSAGE$",
+    "description": "Displayed when the user's API token is rejected by the forwarding service with an error message.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      },
+      "errormessage": {
+        "content": "$2",
+        "example": "Please verify your email address to continue."
+      }
+    }
+  },
+  "forwarderNoAccountId": {
+    "message": "Unable to obtain $SERVICENAME$ masked email account ID.",
+    "description": "Displayed when the forwarding service fails to return an account ID.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderNoDomain": {
+    "message": "Invalid $SERVICENAME$ domain.",
+    "description": "Displayed when the domain is empty or domain authorization failed at the forwarding service.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderNoUrl": {
+    "message": "Invalid $SERVICENAME$ url.",
+    "description": "Displayed when the url of the forwarding service wasn't supplied.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderUnknownError": {
+    "message": "Unknown $SERVICENAME$ error occurred.",
+    "description": "Displayed when the forwarding service failed due to an unknown error.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "SimpleLogin"
+      }
+    }
+  },
+  "forwarderUnknownForwarder": {
+    "message": "Unknown forwarder: '$SERVICENAME$'.",
+    "description": "Displayed when the forwarding service is not supported.",
+    "placeholders": {
+      "servicename": {
+        "content": "$1",
+        "example": "JustTrust.us"
+      }
+    }
+  },
   "hostname": {
     "message": "Sunucu",
     "description": "Part of a URL."
@@ -5796,7 +6002,7 @@
     "message": "Cihaz doğrulamasını aç"
   },
   "deviceVerificationDesc": {
-    "message": "Verification codes are sent to your email address when logging in from an unrecognized device"
+    "message": "Tanınmayan bir cihazdan oturum açarken e-posta adresinize doğrulama kodları gönderilir"
   },
   "updatedDeviceVerification": {
     "message": "Cihaz doğrulaması güncellendi"
@@ -5940,13 +6146,13 @@
     }
   },
   "launchDuoAndFollowStepsToFinishLoggingIn": {
-    "message": "DUO'yu başlatın ve oturum açmayı tamamlamak için adımları izleyin."
+    "message": "Duo'yu başlatın ve oturum açmayı tamamlamak için adımları izleyin."
   },
   "duoRequiredByOrgForAccount": {
-    "message": "Hesabınız için DUO iki adımlı giriş gereklidir."
+    "message": "Hesabınız için Duo iki adımlı giriş gereklidir."
   },
   "launchDuo": {
-    "message": "DUO'yu başlat"
+    "message": "Duo'yu başlat"
   },
   "turnOn": {
     "message": "Aç"
@@ -6460,6 +6666,9 @@
   "editGroupCollectionsDesc": {
     "message": "Kullanıcıları bu gruba ekleyerek koleksiyonlara erişim izni verin."
   },
+  "restrictedCollectionAssignmentDesc": {
+    "message": "You can only assign collections you manage."
+  },
   "accessAllCollectionsDesc": {
     "message": "Mevcut ve gelecekteki tüm koleksiyonlara erişim izni verin."
   },
@@ -6647,16 +6856,16 @@
     }
   },
   "verificationRequiredForActionSetPinToContinue": {
-    "message": "Verification required for this action. Set a PIN to continue."
+    "message": "Bu işlem için doğrulama gerekiyor. Devam etmek için bir PIN belirleyin."
   },
   "setPin": {
-    "message": "Set PIN"
+    "message": "PIN belirle"
   },
   "verifyWithBiometrics": {
-    "message": "Verify with biometrics"
+    "message": "Biyometri ile doğrula"
   },
   "awaitingConfirmation": {
-    "message": "Awaiting confirmation"
+    "message": "Onay bekleniyor"
   },
   "couldNotCompleteBiometrics": {
     "message": "Biyometri işlemi tamamlanamadı."
@@ -6671,10 +6880,10 @@
     "message": "PIN kullan"
   },
   "useBiometrics": {
-    "message": "Use biometrics"
+    "message": "Biyometri kullan"
   },
   "enterVerificationCodeSentToEmail": {
-    "message": "Enter the verification code that was sent to your email."
+    "message": "E-posta adresinize gönderilen doğrulama kodunu girin."
   },
   "resendCode": {
     "message": "Kodu yeniden gönder"
@@ -6691,8 +6900,8 @@
   "selectGroups": {
     "message": "Grupları seçin"
   },
-  "userPermissionOverrideHelper": {
-    "message": "Bir üye için ayarlanan izinler, o üyenin grubu tarafından ayarlanan izinlerin yerini alacak"
+  "userPermissionOverrideHelperDesc": {
+    "message": "Permissions set for a member will replace permissions set by that member's group."
   },
   "noMembersOrGroupsAdded": {
     "message": "Hiç üye veya grup eklenmedi"
@@ -6883,8 +7092,8 @@
   "updateLowKdfIterationsDesc": {
     "message": "Yeni güvenlik önerilerini karşılamak ve hesap korumasını iyileştirmek için şifreleme ayarlarınızı güncelleyin."
   },
-  "changeKdfLoggedOutWarning": {
-    "message": "Devam ettiğinizde tüm aktif oturumlarınız kapatılacaktır. Tekrar giriş yapmanız ve iki aşamalı giriş kurulumunu tamamlamanız gerekecektir. Veri kaybını önlemek için, şifreleme ayarlarınızı değiştirmeden önce kasanızı dışa aktarmanızı öneririz."
+  "kdfSettingsChangeLogoutWarning": {
+    "message": "Proceeding will log you out of all active sessions. You will need to log back in and complete two-step login, if any. We recommend exporting your vault before changing your encryption settings to prevent data loss."
   },
   "secretsManager": {
     "message": "Sır Yöneticisi"
@@ -7150,7 +7359,7 @@
     }
   },
   "verificationRequired": {
-    "message": "Verification required",
+    "message": "Doğrulama gerekli",
     "description": "Default title for the user verification dialog."
   },
   "recoverAccount": {
@@ -7504,6 +7713,12 @@
   "readOnlyCollectionAccess": {
     "message": "You do not have access to manage this collection."
   },
+  "grantAddAccessCollectionWarningTitle": {
+    "message": "Missing Can Manage Permissions"
+  },
+  "grantAddAccessCollectionWarning": {
+    "message": "Grant Can manage permissions to allow full collection management including deletion of collection."
+  },
   "grantCollectionAccess": {
     "message": "Gruplara veya üyelere bu koleksiyona erişim izni verin."
   },
@@ -7517,11 +7732,11 @@
     "message": "Hizmet hesabı erişimi güncellendi"
   },
   "commonImportFormats": {
-    "message": "Common formats",
+    "message": "Sık kullanılan biçimler",
     "description": "Label indicating the most common import formats"
   },
   "maintainYourSubscription": {
-    "message": "$ORG$ aboneliğinizi sürdürmek için, ",
+    "message": "$ORG$ aboneliğinizi sürdürmek için ",
     "description": "This will be used as part of a larger sentence, broken up to include links. The full sentence will read 'To maintain your subscription for $ORG$, add a payment method.'",
     "placeholders": {
       "org": {
@@ -7531,15 +7746,8 @@
     }
   },
   "addAPaymentMethod": {
-    "message": "bir ödeme yöntemi ekle",
+    "message": "bir ödeme yöntemi ekleyin",
     "description": "This will be used as part of a larger sentence, broken up to include links. The full sentence will read 'To maintain your subscription for $ORG$, add a payment method.'"
-  },
-  "collectionEnhancementsDesc": {
-    "message": "Add new settings and permissions for additional flexibility. Replace the Manager role with the \"can manage\" permission, and introduce options to allow users to create collections as well as restrict administrative access to collections.",
-    "description": "This describes new features and improvements for user roles and collections"
-  },
-  "collectionEnhancementsLearnMore": {
-    "message": "Learn more about collection management"
   },
   "organizationInformation": {
     "message": "Kuruluş bilgileri"
@@ -7552,12 +7760,6 @@
   },
   "smFreeTrialConfirmationEmail": {
     "message": "E-posta adresinize bir onay e-postası gönderdik:"
-  },
-  "confirmCollectionEnhancementsDialogTitle": {
-    "message": "Bu eylem geri alınamaz"
-  },
-  "confirmCollectionEnhancementsDialogContent": {
-    "message": "Bu özelliğin etkinleştirilmesi, yönetici rolünün kullanımdan kaldırılmasına ve onun yerine Yönetebilir izninin getirilmesine neden olur. Bu birkaç dakika sürecektir. Tamamlanana kadar herhangi bir organizasyon değişikliği yapmayın. Devam etmek istediğinizden emin misiniz?"
   },
   "sorryToSeeYouGo": {
     "message": "Gittiğini görmek üzücü! Neden iptal ettiğinizi paylaşarak Bitwarden'ın iyileştirilmesine yardımcı olun.",
@@ -7580,11 +7782,11 @@
     "description": "An option for the offboarding survey shown when a user cancels their subscription."
   },
   "tooDifficultToUse": {
-    "message": "Kullanılması zor",
+    "message": "Kullanması zor",
     "description": "An option for the offboarding survey shown when a user cancels their subscription."
   },
   "notUsingEnough": {
-    "message": "Yeterince kullanılmama",
+    "message": "Fazla kullanmıyorum",
     "description": "An option for the offboarding survey shown when a user cancels their subscription."
   },
   "tooExpensive": {
@@ -7607,16 +7809,13 @@
     "message": "Sağlayıcı Portalı"
   },
   "success": {
-    "message": "Success"
-  },
-  "viewCollection": {
-    "message": "View collection"
+    "message": "Başarılı"
   },
   "restrictedGroupAccess": {
     "message": "Kendinizi gruplara ekleyemezsiniz."
   },
-  "restrictedCollectionAccess": {
-    "message": "Kendinizi koleksiyonlara ekleyemezsiniz."
+  "cannotAddYourselfToCollections": {
+    "message": "You cannot add yourself to collections."
   },
   "assign": {
     "message": "Ata"
@@ -7662,10 +7861,10 @@
     "message": "Assigned"
   },
   "used": {
-    "message": "Used"
+    "message": "Kullanılan"
   },
   "remaining": {
-    "message": "Remaining"
+    "message": "Kalan"
   },
   "unlinkOrganization": {
     "message": "Unlink organization"
@@ -7930,7 +8129,7 @@
     "message": "Deleting a provider is permanent and irreversible. Enter your master password to confirm the deletion of the provider and all associated data."
   },
   "deleteProviderName": {
-    "message": "Cannot delete $ID$",
+    "message": "$ID$ silinemedi",
     "placeholders": {
       "id": {
         "content": "$1",
@@ -7938,8 +8137,8 @@
       }
     }
   },
-  "deleteProviderWarningDesc": {
-    "message": "You must unlink all clients before you can delete $ID$",
+  "deleteProviderWarningDescription": {
+    "message": "You must unlink all clients before you can delete $ID$.",
     "placeholders": {
       "id": {
         "content": "$1",
@@ -8021,7 +8220,7 @@
     "message": "Select a plan"
   },
   "thirtyFivePercentDiscount": {
-    "message": "35% Discount"
+    "message": "35% İndirim"
   },
   "monthPerMember": {
     "message": "month per member"
@@ -8049,5 +8248,111 @@
   },
   "collectionItemSelect": {
     "message": "Select collection item"
+  },
+  "manageBillingFromProviderPortalMessage": {
+    "message": "Manage billing from the Provider Portal"
+  },
+  "viewItemsIn": {
+    "message": "View items in $NAME$",
+    "description": "Button to view the contents of a folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "backTo": {
+    "message": "Back to $NAME$",
+    "description": "Navigate back to a previous folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "back": {
+    "message": "Back",
+    "description": "Button text to navigate back"
+  },
+  "removeItem": {
+    "message": "Remove $NAME$",
+    "description": "Remove a selected option, such as a folder or collection",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "Work"
+      }
+    }
+  },
+  "viewInfo": {
+    "message": "View info"
+  },
+  "viewAccess": {
+    "message": "View access"
+  },
+  "noCollectionsSelected": {
+    "message": "You have not selected any collections."
+  },
+  "updateName": {
+    "message": "Update name"
+  },
+  "updatedOrganizationName": {
+    "message": "Updated organization name"
+  },
+  "providerPlan": {
+    "message": "Managed Service Provider"
+  },
+  "orgSeats": {
+    "message": "Organization Seats"
+  },
+  "providerDiscount": {
+    "message": "%$AMOUNT$ İndirim",
+    "placeholders": {
+      "amount": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "lowKDFIterationsBanner": {
+    "message": "Low KDF iterations. Increase your iterations to improve the security of your account."
+  },
+  "changeKDFSettings": {
+    "message": "Change KDF settings"
+  },
+  "secureYourInfrastructure": {
+    "message": "Secure your infrastructure"
+  },
+  "protectYourFamilyOrBusiness": {
+    "message": "Protect your family or business"
+  },
+  "upgradeOrganizationCloseSecurityGaps": {
+    "message": "Close security gaps with monitoring reports"
+  },
+  "upgradeOrganizationCloseSecurityGapsDesc": {
+    "message": "Stay ahead of security vulnerabilities by upgrading to a paid plan for enhanced monitoring."
+  },
+  "approveAllRequests": {
+    "message": "Approve all requests"
+  },
+  "allLoginRequestsApproved": {
+    "message": "All login requests approved"
+  },
+  "payPal": {
+    "message": "PayPal"
+  },
+  "bitcoin": {
+    "message": "Bitcoin"
+  },
+  "updatedTaxInformation": {
+    "message": "Updated tax information"
+  },
+  "unverified": {
+    "message": "Unverified"
+  },
+  "verified": {
+    "message": "Verified"
   }
 }

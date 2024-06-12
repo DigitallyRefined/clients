@@ -11,7 +11,6 @@ import { DeepJsonify } from "../../../types/deep-jsonify";
 import { KdfType } from "../../enums";
 import { Utils } from "../../misc/utils";
 
-import { EncryptedString, EncString } from "./enc-string";
 import { SymmetricCryptoKey } from "./symmetric-crypto-key";
 
 export class EncryptionPair<TEncrypted, TDecrypted> {
@@ -144,30 +143,16 @@ export class AccountProfile {
 
 export class AccountSettings {
   defaultUriMatch?: UriMatchStrategySetting;
-  minimizeOnCopyToClipboard?: boolean;
   passwordGenerationOptions?: PasswordGeneratorOptions;
   usernameGenerationOptions?: UsernameGeneratorOptions;
   generatorOptions?: GeneratorOptions;
-  pinKeyEncryptedUserKey?: EncryptedString;
-  pinKeyEncryptedUserKeyEphemeral?: EncryptedString;
-  protectedPin?: string;
-  vaultTimeout?: number;
-  vaultTimeoutAction?: string = "lock";
-
-  /** @deprecated July 2023, left for migration purposes*/
-  pinProtected?: EncryptionPair<string, EncString> = new EncryptionPair<string, EncString>();
 
   static fromJSON(obj: Jsonify<AccountSettings>): AccountSettings {
     if (obj == null) {
       return null;
     }
 
-    return Object.assign(new AccountSettings(), obj, {
-      pinProtected: EncryptionPair.fromJSON<string, EncString>(
-        obj?.pinProtected,
-        EncString.fromJSON,
-      ),
-    });
+    return Object.assign(new AccountSettings(), obj);
   }
 }
 

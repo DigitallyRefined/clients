@@ -1,3 +1,5 @@
+// eslint-disable-next-line import/no-restricted-paths -- Needed to provide client type to migrations
+import { ClientType } from "../enums";
 // eslint-disable-next-line import/no-restricted-paths -- Needed to print log messages
 import { LogService } from "../platform/abstractions/log.service";
 // eslint-disable-next-line import/no-restricted-paths -- Needed to interface with storage locations
@@ -17,6 +19,7 @@ export class MigrationHelper {
     private storageService: AbstractStorageService,
     public logService: LogService,
     type: MigrationHelperType,
+    public clientType: ClientType,
   ) {
     this.type = type;
   }
@@ -154,18 +157,29 @@ export class MigrationHelper {
    *
    * This is useful from creating migrations off of this paradigm, but should not be used once a value is migrated to a state provider.
    *
-   * @returns a list of all accounts that have been authenticated with state service, cast the the expected type.
+   * @returns a list of all accounts that have been authenticated with state service, cast the expected type.
    */
   async getAccounts<ExpectedAccountType>(): Promise<
     { userId: string; account: ExpectedAccountType }[]
   > {
-    const userIds = (await this.get<string[]>("authenticatedAccounts")) ?? [];
+    const userIds = await this.getKnownUserIds();
     return Promise.all(
       userIds.map(async (userId) => ({
         userId,
         account: await this.get<ExpectedAccountType>(userId),
       })),
     );
+  }
+
+  /**
+   * Helper method to read known users ids.
+   */
+  async getKnownUserIds(): Promise<string[]> {
+    if (this.currentVersion < 60) {
+      return knownAccountUserIdsBuilderPre60(this.storageService);
+    } else {
+      return knownAccountUserIdsBuilder(this.storageService);
+    }
   }
 
   /**
@@ -229,4 +243,19 @@ function globalKeyBuilder(keyDefinition: KeyDefinitionLike): string {
 
 function globalKeyBuilderPre9(): string {
   throw Error("No key builder should be used for versions prior to 9.");
+}
+
+async function knownAccountUserIdsBuilderPre60(
+  storageService: AbstractStorageService,
+): Promise<string[]> {
+  return (await storageService.get<string[]>("authenticatedAccounts")) ?? [];
+}
+
+async function knownAccountUserIdsBuilder(
+  storageService: AbstractStorageService,
+): Promise<string[]> {
+  const accounts = await storageService.get<Record<string, unknown>>(
+    globalKeyBuilder({ stateDefinition: { name: "account" }, key: "accounts" }),
+  );
+  return Object.keys(accounts ?? {});
 }

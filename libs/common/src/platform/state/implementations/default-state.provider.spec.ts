@@ -17,6 +17,7 @@ import { UserId } from "../../../types/guid";
 import { DeriveDefinition } from "../derive-definition";
 import { KeyDefinition } from "../key-definition";
 import { StateDefinition } from "../state-definition";
+import { UserKeyDefinition } from "../user-key-definition";
 
 import { DefaultStateProvider } from "./default-state.provider";
 
@@ -52,12 +53,12 @@ describe("DefaultStateProvider", () => {
   describe.each([
     [
       "getUserState$",
-      (keyDefinition: KeyDefinition<string>, userId?: UserId) =>
+      (keyDefinition: UserKeyDefinition<string>, userId?: UserId) =>
         sut.getUserState$(keyDefinition, userId),
     ],
     [
       "getUserStateOrDefault$",
-      (keyDefinition: KeyDefinition<string>, userId?: UserId) =>
+      (keyDefinition: UserKeyDefinition<string>, userId?: UserId) =>
         sut.getUserStateOrDefault$(keyDefinition, { userId: userId }),
     ],
   ])(
@@ -65,14 +66,24 @@ describe("DefaultStateProvider", () => {
     (
       _testName: string,
       methodUnderTest: (
-        keyDefinition: KeyDefinition<string>,
+        keyDefinition: UserKeyDefinition<string>,
         userId?: UserId,
       ) => Observable<string>,
     ) => {
-      const accountInfo = { email: "email", name: "name", status: AuthenticationStatus.LoggedOut };
-      const keyDefinition = new KeyDefinition<string>(new StateDefinition("test", "disk"), "test", {
-        deserializer: (s) => s,
-      });
+      const accountInfo = {
+        email: "email",
+        emailVerified: false,
+        name: "name",
+        status: AuthenticationStatus.LoggedOut,
+      };
+      const keyDefinition = new UserKeyDefinition<string>(
+        new StateDefinition("test", "disk"),
+        "test",
+        {
+          deserializer: (s) => s,
+          clearOn: [],
+        },
+      );
 
       it("should follow the specified user if userId is provided", async () => {
         const state = singleUserStateProvider.getFake(userId, keyDefinition);
@@ -114,10 +125,20 @@ describe("DefaultStateProvider", () => {
   );
 
   describe("getUserState$", () => {
-    const accountInfo = { email: "email", name: "name", status: AuthenticationStatus.LoggedOut };
-    const keyDefinition = new KeyDefinition<string>(new StateDefinition("test", "disk"), "test", {
-      deserializer: (s) => s,
-    });
+    const accountInfo = {
+      email: "email",
+      emailVerified: false,
+      name: "name",
+      status: AuthenticationStatus.LoggedOut,
+    };
+    const keyDefinition = new UserKeyDefinition<string>(
+      new StateDefinition("test", "disk"),
+      "test",
+      {
+        deserializer: (s) => s,
+        clearOn: [],
+      },
+    );
 
     it("should not emit any values until a truthy user id is supplied", async () => {
       accountService.activeAccountSubject.next(null);
@@ -139,9 +160,14 @@ describe("DefaultStateProvider", () => {
   });
 
   describe("getUserStateOrDefault$", () => {
-    const keyDefinition = new KeyDefinition<string>(new StateDefinition("test", "disk"), "test", {
-      deserializer: (s) => s,
-    });
+    const keyDefinition = new UserKeyDefinition<string>(
+      new StateDefinition("test", "disk"),
+      "test",
+      {
+        deserializer: (s) => s,
+        clearOn: [],
+      },
+    );
 
     it("should emit default value if no userId supplied and first active user id emission in falsy", async () => {
       accountService.activeAccountSubject.next(null);
@@ -158,9 +184,14 @@ describe("DefaultStateProvider", () => {
   });
 
   describe("setUserState", () => {
-    const keyDefinition = new KeyDefinition<string>(new StateDefinition("test", "disk"), "test", {
-      deserializer: (s) => s,
-    });
+    const keyDefinition = new UserKeyDefinition<string>(
+      new StateDefinition("test", "disk"),
+      "test",
+      {
+        deserializer: (s) => s,
+        clearOn: [],
+      },
+    );
 
     it("should set the state for the active user if no userId is provided", async () => {
       const value = "value";
@@ -192,8 +223,9 @@ describe("DefaultStateProvider", () => {
   });
 
   it("should bind the activeUserStateProvider", () => {
-    const keyDefinition = new KeyDefinition(new StateDefinition("test", "disk"), "test", {
+    const keyDefinition = new UserKeyDefinition(new StateDefinition("test", "disk"), "test", {
       deserializer: () => null,
+      clearOn: [],
     });
     const existing = activeUserStateProvider.get(keyDefinition);
     const actual = sut.getActive(keyDefinition);
@@ -202,8 +234,9 @@ describe("DefaultStateProvider", () => {
 
   it("should bind the singleUserStateProvider", () => {
     const userId = "user" as UserId;
-    const keyDefinition = new KeyDefinition(new StateDefinition("test", "disk"), "test", {
+    const keyDefinition = new UserKeyDefinition(new StateDefinition("test", "disk"), "test", {
       deserializer: () => null,
+      clearOn: [],
     });
     const existing = singleUserStateProvider.get(userId, keyDefinition);
     const actual = sut.getUser(userId, keyDefinition);

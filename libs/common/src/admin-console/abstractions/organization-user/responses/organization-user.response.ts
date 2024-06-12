@@ -10,11 +10,6 @@ export class OrganizationUserResponse extends BaseResponse {
   type: OrganizationUserType;
   status: OrganizationUserStatusType;
   externalId: string;
-  /**
-   * @deprecated
-   * To be removed after Flexible Collections.
-   **/
-  accessAll: boolean;
   accessSecretsManager: boolean;
   permissions: PermissionsApi;
   resetPasswordEnrolled: boolean;
@@ -30,7 +25,6 @@ export class OrganizationUserResponse extends BaseResponse {
     this.status = this.getResponseProperty("Status");
     this.permissions = new PermissionsApi(this.getResponseProperty("Permissions"));
     this.externalId = this.getResponseProperty("ExternalId");
-    this.accessAll = this.getResponseProperty("AccessAll");
     this.accessSecretsManager = this.getResponseProperty("AccessSecretsManager");
     this.resetPasswordEnrolled = this.getResponseProperty("ResetPasswordEnrolled");
     this.hasMasterPassword = this.getResponseProperty("HasMasterPassword");
@@ -70,6 +64,7 @@ export class OrganizationUserDetailsResponse extends OrganizationUserResponse {
 }
 
 export class OrganizationUserResetPasswordDetailsResponse extends BaseResponse {
+  organizationUserId: string;
   kdf: KdfType;
   kdfIterations: number;
   kdfMemory?: number;
@@ -79,6 +74,7 @@ export class OrganizationUserResetPasswordDetailsResponse extends BaseResponse {
 
   constructor(response: any) {
     super(response);
+    this.organizationUserId = this.getResponseProperty("OrganizationUserId");
     this.kdf = this.getResponseProperty("Kdf");
     this.kdfIterations = this.getResponseProperty("KdfIterations");
     this.kdfMemory = this.getResponseProperty("KdfMemory");

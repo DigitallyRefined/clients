@@ -10,12 +10,13 @@ import { BillingAccountProfileStateService } from "@bitwarden/common/billing/abs
 import { FeatureFlag } from "@bitwarden/common/enums/feature-flag.enum";
 import { ConfigService } from "@bitwarden/common/platform/abstractions/config/config.service";
 import { PlatformUtilsService } from "@bitwarden/common/platform/abstractions/platform-utils.service";
-import { SyncService } from "@bitwarden/common/vault/abstractions/sync/sync.service.abstraction";
+import { SyncService } from "@bitwarden/common/platform/sync";
 import { IconModule, LayoutComponent, NavigationModule } from "@bitwarden/components";
 
 import { PaymentMethodWarningsModule } from "../billing/shared";
 
 import { PasswordManagerLogo } from "./password-manager-logo";
+import { ProductSwitcherModule } from "./product-switcher/product-switcher.module";
 import { ToggleWidthComponent } from "./toggle-width.component";
 
 @Component({
@@ -31,6 +32,7 @@ import { ToggleWidthComponent } from "./toggle-width.component";
     NavigationModule,
     PaymentMethodWarningsModule,
     ToggleWidthComponent,
+    ProductSwitcherModule,
   ],
 })
 export class UserLayoutComponent implements OnInit {
@@ -40,7 +42,6 @@ export class UserLayoutComponent implements OnInit {
 
   protected showPaymentMethodWarningBanners$ = this.configService.getFeatureFlag$(
     FeatureFlag.ShowPaymentMethodWarningBanners,
-    false,
   );
 
   constructor(
