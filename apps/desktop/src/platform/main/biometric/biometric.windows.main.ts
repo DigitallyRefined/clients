@@ -214,4 +214,9 @@ export default class BiometricWindowsMain implements OsBiometricService {
       clientKeyPartB64,
     };
   }
+
+  async osBiometricsNeedsSetup() {
+    return false;
+  }
+  osBiometricsSetup: () => Promise<void>;
 }
