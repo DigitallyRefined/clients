@@ -4,7 +4,7 @@ set -e
 
 cd /bitwarden-build
 npm install
-cd apps/desktop/desktop_native
+cd apps/desktop/desktop_native/napi
 source "$HOME/.cargo/env"
 export PKG_CONFIG_ALL_STATIC=1
 export PKG_CONFIG_ALLOW_CROSS=1

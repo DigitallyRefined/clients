@@ -13,6 +13,8 @@ RUN dnf install -y \
     rpm-build \
     nodejs
 
+RUN pip install setuptools
+
 RUN rustup-init -y
 
 RUN source "$HOME/.cargo/env" && \
