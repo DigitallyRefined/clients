@@ -4,7 +4,6 @@ import { firstValueFrom, map } from "rxjs";
 import { AccountService } from "@bitwarden/common/auth/abstractions/account.service";
 import { AuthService } from "@bitwarden/common/auth/abstractions/auth.service";
 import { MasterPasswordServiceAbstraction } from "@bitwarden/common/auth/abstractions/master-password.service.abstraction";
-import { AuthenticationStatus } from "@bitwarden/common/auth/enums/authentication-status";
 import { CryptoFunctionService } from "@bitwarden/common/platform/abstractions/crypto-function.service";
 import { CryptoService } from "@bitwarden/common/platform/abstractions/crypto.service";
 import { LogService } from "@bitwarden/common/platform/abstractions/log.service";
@@ -149,11 +148,6 @@ export class NativeMessagingService {
           return this.send({ command: "biometricUnlock", response: "not unlocked" }, appId);
         }
 
-        const authStatus = await firstValueFrom(this.authService.authStatusFor$(userId));
-        if (authStatus !== AuthenticationStatus.Unlocked) {
-          return this.send({ command: "biometricUnlock", response: "not unlocked" }, appId);
-        }
-
         const biometricUnlockPromise =
           message.userId == null
             ? firstValueFrom(this.biometricStateService.biometricUnlockEnabled$)
@@ -194,6 +188,7 @@ export class NativeMessagingService {
               },
               appId,
             );
+            await ipc.platform.reloadProcess();
           } else {
             await this.send({ command: "biometricUnlock", response: "canceled" }, appId);
           }
